@@ -21,7 +21,7 @@ jobs:
   build:
     name: Build wasm-tools
     runs-on: ${{ matrix.os }}
-    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/wasm-tools-')
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
     strategy:
       matrix:
         include:
@@ -57,6 +57,6 @@ jobs:
         path: dist
 
     - uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/') && github.repository == 'bytecodealliance/wasm-tools'
+      if: startsWith(github.ref, 'refs/tags/') && github.repository == 'alexcrichton/wasm-component-ld'
       with:
         files: "dist/*"
