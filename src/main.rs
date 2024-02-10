@@ -14,6 +14,9 @@ struct App {
 
     #[clap(long)]
     rsp_quoting: Option<String>,
+
+    #[clap(long)]
+    wasi_proxy_adapter: bool,
 }
 
 #[derive(Parser)]
@@ -69,6 +72,7 @@ impl App {
 
         let reactor_adapter = include_bytes!("wasi_snapshot_preview1.reactor.wasm");
         let command_adapter = include_bytes!("wasi_snapshot_preview1.command.wasm");
+        let proxy_adapter = include_bytes!("wasi_snapshot_preview1.proxy.wasm");
         let core_module =
             std::fs::read(lld_output.path()).context("failed to read `rust-lld` output")?;
 
@@ -92,6 +96,8 @@ impl App {
 
         let adapter = if exports_start {
             &command_adapter[..]
+        } else if self.wasi_proxy_adapter {
+            &proxy_adapter[..]
         } else {
             &reactor_adapter[..]
         };
