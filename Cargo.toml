@@ -1,8 +1,11 @@
 [package]
 name = "wasm-component-ld"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+description = "Linker for `wasm32-wasip2`"
+repository = "https://github.com/alexcrichton/wasm-component-ld"
+readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.75"
