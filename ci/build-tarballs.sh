@@ -17,7 +17,7 @@ fi
 bin_pkgname=wasm-component-ld-$tag-$platform
 
 mkdir tmp/$bin_pkgname
-cp LICENSE README.md tmp/$bin_pkgname
+cp LICENSE-* README.md tmp/$bin_pkgname
 
 fmt=tar
 if [ "$platform" = "x86_64-windows" ]; then
