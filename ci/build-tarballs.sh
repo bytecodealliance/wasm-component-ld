@@ -10,8 +10,8 @@ mkdir tmp
 mkdir -p dist
 
 tag=dev
-if [[ $GITHUB_REF == refs/tags/ ]]; then
-  tag=${GITHUB_REF:21}
+if [[ $GITHUB_REF == refs/tags/* ]]; then
+  tag=${GITHUB_REF:10}
 fi
 
 bin_pkgname=wasm-component-ld-$tag-$platform
