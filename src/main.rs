@@ -43,6 +43,10 @@ struct WasmLdArgs {
     libraries: Vec<PathBuf>,
     #[clap(long)]
     no_entry: bool,
+    #[clap(short = 'm')]
+    target_emulation: Option<String>,
+    #[clap(long)]
+    strip_all: bool,
 
     objects: Vec<PathBuf>,
 }
@@ -153,6 +157,12 @@ impl App {
         }
         for lib in self.lld.libraries.iter() {
             lld.arg("-l").arg(lib);
+        }
+        if let Some(arg) = &self.lld.target_emulation {
+            lld.arg("-m").arg(arg);
+        }
+        if self.lld.strip_all {
+            lld.arg("--strip-all");
         }
         lld
     }
