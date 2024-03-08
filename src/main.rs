@@ -65,11 +65,15 @@ fn main() -> Result<()> {
 impl App {
     fn run(&mut self) -> Result<()> {
         let mut cmd = self.lld();
+        let linker = cmd.get_program().to_owned();
 
         let lld_output =
             tempfile::NamedTempFile::new().context("failed to create temp output file")?;
         cmd.arg("-o").arg(lld_output.path());
-        let status = cmd.status().context("failed to spawn `rust-lld`")?;
+
+        let status = cmd
+            .status()
+            .with_context(|| format!("failed to spawn {linker:?}"))?;
         if !status.success() {
             bail!("failed to invoke LLD: {status}");
         }
@@ -77,8 +81,8 @@ impl App {
         let reactor_adapter = include_bytes!("wasi_snapshot_preview1.reactor.wasm");
         let command_adapter = include_bytes!("wasi_snapshot_preview1.command.wasm");
         let proxy_adapter = include_bytes!("wasi_snapshot_preview1.proxy.wasm");
-        let core_module =
-            std::fs::read(lld_output.path()).context("failed to read `rust-lld` output")?;
+        let core_module = std::fs::read(lld_output.path())
+            .with_context(|| format!("failed to read {linker:?} output"))?;
 
         // Inspect the output module to see if it's a command or reactor.
         let mut exports_start = false;
