@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
 use clap::Parser;
+use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 use wasmparser::Payload;
@@ -52,7 +53,7 @@ struct WasmLdArgs {
 }
 
 fn main() -> Result<()> {
-    let mut args = std::env::args_os().collect::<Vec<_>>();
+    let mut args = env::args_os().collect::<Vec<_>>();
     if let Some([flavor, wasm]) = args.get(1..3) {
         if flavor == "-flavor" && wasm == "wasm" {
             args.remove(1);
@@ -124,8 +125,7 @@ impl App {
     }
 
     fn lld(&self) -> Command {
-        let mut lld = Command::new("rust-lld");
-        lld.arg("-flavor").arg("wasm");
+        let mut lld = self.find_lld();
         for export in self.lld.export.iter() {
             lld.arg("--export").arg(export);
         }
@@ -169,5 +169,26 @@ impl App {
             lld.arg("--strip-all");
         }
         lld
+    }
+
+    fn find_lld(&self) -> Command {
+        // Search for the first of `wasm-ld` or `rust-lld` in `$PATH`
+        let wasm_ld = format!("wasm-ld{}", env::consts::EXE_SUFFIX);
+        let rust_lld = format!("rust-lld{}", env::consts::EXE_SUFFIX);
+        for entry in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
+            if entry.join(&wasm_ld).is_file() {
+                return Command::new(wasm_ld);
+            }
+            if entry.join(&rust_lld).is_file() {
+                let mut ret = Command::new(rust_lld);
+                ret.arg("-flavor").arg("wasm");
+                return ret;
+            }
+        }
+
+        // Fall back to `wasm-ld` if the search failed to get an error message
+        // that indicates that `wasm-ld` was attempted to be found but couldn't
+        // be found.
+        Command::new("wasm-ld")
     }
 }
