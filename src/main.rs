@@ -18,6 +18,9 @@ struct App {
 
     #[clap(long)]
     wasi_proxy_adapter: bool,
+
+    #[clap(long)]
+    wasm_ld_path: Option<PathBuf>,
 }
 
 #[derive(Parser)]
@@ -172,6 +175,10 @@ impl App {
     }
 
     fn find_lld(&self) -> Command {
+        if let Some(path) = &self.wasm_ld_path {
+            return Command::new(path);
+        }
+
         // Search for the first of `wasm-ld` or `rust-lld` in `$PATH`
         let wasm_ld = format!("wasm-ld{}", env::consts::EXE_SUFFIX);
         let rust_lld = format!("rust-lld{}", env::consts::EXE_SUFFIX);
