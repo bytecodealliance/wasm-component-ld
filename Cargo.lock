@@ -227,7 +227,7 @@ checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
 
 [[package]]
 name = "wasm-component-ld"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "anyhow",
  "lexopt",
@@ -238,18 +238,18 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
-version = "0.200.0"
+version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9e3fb0c8fbddd78aa6095b850dfeedbc7506cf5f81e633f69cf8f2333ab84b9"
+checksum = "bfd106365a7f5f7aa3c1916a98cbb3ad477f5ff96ddb130285a91c6e7429e67a"
 dependencies = [
  "leb128",
 ]
 
 [[package]]
 name = "wasm-metadata"
-version = "0.200.0"
+version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c31b8cc0c21f46d55b0aaa419cacce1eadcf28eaebd0e1488d6a6313ee71a586"
+checksum = "094aea3cb90e09f16ee25a4c0e324b3e8c934e7fd838bfa039aef5352f44a917"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -263,9 +263,9 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.200.0"
+version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a03f65ac876612140c57ff6c3b8fe4990067cce97c2cfdb07368a3cc3354b062"
+checksum = "d6998515d3cf3f8b980ef7c11b29a9b1017d4cf86b99ae93b546992df9931413"
 dependencies = [
  "bitflags",
  "indexmap",
@@ -340,9 +340,9 @@ checksum = "0770833d60a970638e989b3fa9fd2bb1aaadcf88963d1659fd7d9990196ed2d6"
 
 [[package]]
 name = "wit-component"
-version = "0.200.0"
+version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39979723340baea490b87b11b2abae05f149d86f2b55c18d41d78a2a2b284c16"
+checksum = "0c836b1fd9932de0431c1758d8be08212071b6bba0151f7bac826dbc4312a2a9"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -359,9 +359,9 @@ dependencies = [
 
 [[package]]
 name = "wit-parser"
-version = "0.200.0"
+version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f717576b37f01c15696bda7f6f13868367b9c5913485f9f0ec8e59fd28c8e13"
+checksum = "744237b488352f4f27bca05a10acb79474415951c450e52ebd0da784c1df2bcc"
 dependencies = [
  "anyhow",
  "id-arena",
