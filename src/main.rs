@@ -34,6 +34,8 @@ struct WasmLdArgs {
     #[clap(long)]
     allow_undefined: bool,
     #[clap(long)]
+    entry: Option<String>,
+    #[clap(long)]
     fatal_warnings: bool,
     #[clap(long)]
     no_demangle: bool,
@@ -170,6 +172,9 @@ impl App {
         }
         if self.lld.strip_all {
             lld.arg("--strip-all");
+        }
+        if let Some(arg) = self.lld.entry {
+            lld.arg("--entry").arg(arg);
         }
         lld
     }
