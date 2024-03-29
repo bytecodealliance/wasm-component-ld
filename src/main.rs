@@ -1,61 +1,38 @@
 use anyhow::{bail, Context, Result};
-use clap::Parser;
+use lexopt::{Arg, Parser, ValueExt};
 use std::env;
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Command;
 use wasmparser::Payload;
 
-#[derive(Parser)]
+#[derive(Default)]
 struct App {
-    #[clap(flatten)]
-    lld: WasmLdArgs,
-
-    #[clap(short = 'o')]
-    output: PathBuf,
-
-    #[clap(long)]
+    output: Option<PathBuf>,
     rsp_quoting: Option<String>,
-
-    #[clap(long)]
     wasi_proxy_adapter: bool,
-
-    #[clap(long)]
     wasm_ld_path: Option<PathBuf>,
+    lld_args: Vec<OsString>,
+    shared: bool,
 }
 
-#[derive(Parser)]
-struct WasmLdArgs {
-    #[clap(long)]
-    export: Vec<String>,
-    #[clap(short = 'z')]
-    z_opts: Vec<String>,
-    #[clap(long)]
-    stack_first: bool,
-    #[clap(long)]
-    allow_undefined: bool,
-    #[clap(long)]
-    fatal_warnings: bool,
-    #[clap(long)]
-    no_demangle: bool,
-    #[clap(long)]
-    gc_sections: bool,
-    #[clap(short = 'O')]
-    optimize: Option<u32>,
-    #[clap(short = 'L')]
-    link_path: Vec<PathBuf>,
-    #[clap(short = 'l')]
-    libraries: Vec<PathBuf>,
-    #[clap(long)]
-    no_entry: bool,
-    #[clap(short = 'm')]
-    target_emulation: Option<String>,
-    #[clap(long)]
-    strip_all: bool,
+fn main() {
+    let err = match run() {
+        Ok(()) => return,
+        Err(e) => e,
+    };
+    eprintln!("error: {err}");
+    if err.chain().len() > 1 {
+        eprintln!("\nCaused by:");
+        for (i, err) in err.chain().skip(1).enumerate() {
+            eprintln!("{i:>5}: {}", err.to_string().replace("\n", "\n       "));
+        }
+    }
 
-    objects: Vec<PathBuf>,
+    std::process::exit(1);
 }
 
-fn main() -> Result<()> {
+fn run() -> Result<()> {
     let mut args = env::args_os().collect::<Vec<_>>();
     if let Some([flavor, wasm]) = args.get(1..3) {
         if flavor == "-flavor" && wasm == "wasm" {
@@ -63,7 +40,47 @@ fn main() -> Result<()> {
             args.remove(1);
         }
     }
-    App::parse_from(args).run()
+
+    let mut app = App::default();
+    let mut parser = Parser::from_iter(args);
+    loop {
+        if let Some(mut args) = parser.try_raw_args() {
+            if let Some(arg) = args.peek() {
+                if arg == "-shared" {
+                    app.lld_args.push(arg.to_owned());
+                    app.shared = true;
+                    args.next();
+                    continue;
+                }
+            }
+        }
+        match parser.next()? {
+            Some(Arg::Long(
+                s @ ("no-entry" | "no-demangle" | "allow-undefined" | "stack-first" | "gc-sections"
+                | "whole-archive" | "no-whole-archive" | "fatal-warnings"),
+            )) => {
+                app.lld_args.push(format!("--{s}").into());
+            }
+            Some(Arg::Long("rsp-quoting")) => app.rsp_quoting = Some(parser.value()?.parse()?),
+            Some(Arg::Long("wasm-ld-path")) => app.wasm_ld_path = Some(parser.value()?.into()),
+            Some(Arg::Long(s @ ("export" | "entry"))) => {
+                app.lld_args.push(format!("--{s}").into());
+                app.lld_args.push(parser.value()?);
+            }
+            Some(Arg::Short(c @ ('L' | 'z' | 'l' | 'O' | 'm'))) => {
+                app.lld_args.push(format!("-{c}").into());
+                app.lld_args.push(parser.value()?);
+            }
+            Some(Arg::Short('o')) => app.output = Some(parser.value()?.into()),
+            Some(Arg::Value(obj)) => app.lld_args.push(obj),
+            Some(other) => bail!(other.unexpected()),
+            None => break,
+        }
+    }
+    if app.output.is_none() {
+        bail!("must specify an output path via `-o`");
+    }
+    app.run()
 }
 
 impl App {
@@ -73,13 +90,28 @@ impl App {
 
         let lld_output =
             tempfile::NamedTempFile::new().context("failed to create temp output file")?;
-        cmd.arg("-o").arg(lld_output.path());
+
+        // Shared libraries don't get wit-component run below so place the
+        // output directly at the desired output location. Otherwise output to a
+        // temporary location for wit-component to read and then the real output
+        // is created after wit-component runs.
+        if self.shared {
+            cmd.arg("-o").arg(self.output.as_ref().unwrap());
+        } else {
+            cmd.arg("-o").arg(lld_output.path());
+        }
 
         let status = cmd
             .status()
             .with_context(|| format!("failed to spawn {linker:?}"))?;
         if !status.success() {
             bail!("failed to invoke LLD: {status}");
+        }
+
+        // Skip componentization with `--shared` since that's creating a shared
+        // library that's not a component yet.
+        if self.shared {
+            return Ok(());
         }
 
         let reactor_adapter = include_bytes!("wasi_snapshot_preview1.reactor.wasm");
@@ -122,55 +154,15 @@ impl App {
             .encode()
             .context("failed to encode component")?;
 
-        std::fs::write(&self.output, &component).context("failed to write output file")?;
+        std::fs::write(self.output.as_ref().unwrap(), &component)
+            .context("failed to write output file")?;
 
         Ok(())
     }
 
     fn lld(&self) -> Command {
         let mut lld = self.find_lld();
-        for export in self.lld.export.iter() {
-            lld.arg("--export").arg(export);
-        }
-        for opt in self.lld.z_opts.iter() {
-            lld.arg("-z").arg(opt);
-        }
-        if self.lld.stack_first {
-            lld.arg("--stack-first");
-        }
-        if self.lld.allow_undefined {
-            lld.arg("--allow-undefined");
-        }
-        if self.lld.fatal_warnings {
-            lld.arg("--fatal-warnings");
-        }
-        if self.lld.no_demangle {
-            lld.arg("--no-demangle");
-        }
-        if self.lld.gc_sections {
-            lld.arg("--gc-sections");
-        }
-        if self.lld.no_entry {
-            lld.arg("--no-entry");
-        }
-        if let Some(opt) = self.lld.optimize {
-            lld.arg(&format!("-O{opt}"));
-        }
-        for path in self.lld.link_path.iter() {
-            lld.arg("-L").arg(path);
-        }
-        for obj in self.lld.objects.iter() {
-            lld.arg(obj);
-        }
-        for lib in self.lld.libraries.iter() {
-            lld.arg("-l").arg(lib);
-        }
-        if let Some(arg) = &self.lld.target_emulation {
-            lld.arg("-m").arg(arg);
-        }
-        if self.lld.strip_all {
-            lld.arg("--strip-all");
-        }
+        lld.args(&self.lld_args);
         lld
     }
 
