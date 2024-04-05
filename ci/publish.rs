@@ -303,42 +303,42 @@ fn publish(krate: &Crate) -> bool {
         return false;
     }
 
-    // After we've published then make sure that the `wasmtime-publish` group is
-    // added to this crate for future publications. If it's already present
-    // though we can skip the `cargo owner` modification.
-    let output = Command::new("curl")
-        .arg(&format!(
-            "https://crates.io/api/v1/crates/{}/owners",
-            krate.name
-        ))
-        .output()
-        .expect("failed to invoke `curl`");
-    if output.status.success()
-        && String::from_utf8_lossy(&output.stdout).contains("wasmtime-publish")
-    {
-        println!(
-            "wasmtime-publish already listed as an owner of {}",
-            krate.name
-        );
-        return true;
-    }
+    // // After we've published then make sure that the `wasmtime-publish` group is
+    // // added to this crate for future publications. If it's already present
+    // // though we can skip the `cargo owner` modification.
+    // let output = Command::new("curl")
+    //     .arg(&format!(
+    //         "https://crates.io/api/v1/crates/{}/owners",
+    //         krate.name
+    //     ))
+    //     .output()
+    //     .expect("failed to invoke `curl`");
+    // if output.status.success()
+    //     && String::from_utf8_lossy(&output.stdout).contains("wasmtime-publish")
+    // {
+    //     println!(
+    //         "wasmtime-publish already listed as an owner of {}",
+    //         krate.name
+    //     );
+    //     return true;
+    // }
 
-    // Note that the status is ignored here. This fails most of the time because
-    // the owner is already set and present, so we only want to add this to
-    // crates which haven't previously been published.
-    let status = Command::new("cargo")
-        .arg("owner")
-        .arg("-a")
-        .arg("github:bytecodealliance:wasmtime-publish")
-        .arg(&krate.name)
-        .status()
-        .expect("failed to run cargo");
-    if !status.success() {
-        panic!(
-            "FAIL: failed to add wasmtime-publish as owner `{}`: {}",
-            krate.name, status
-        );
-    }
+    // // Note that the status is ignored here. This fails most of the time because
+    // // the owner is already set and present, so we only want to add this to
+    // // crates which haven't previously been published.
+    // let status = Command::new("cargo")
+    //     .arg("owner")
+    //     .arg("-a")
+    //     .arg("github:bytecodealliance:wasmtime-publish")
+    //     .arg(&krate.name)
+    //     .status()
+    //     .expect("failed to run cargo");
+    // if !status.success() {
+    //     panic!(
+    //         "FAIL: failed to add wasmtime-publish as owner `{}`: {}",
+    //         krate.name, status
+    //     );
+    // }
 
     true
 }
