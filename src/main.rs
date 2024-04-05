@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
-use clap::{ArgAction, ArgGroup, CommandFactory, FromArgMatches};
-use lexopt::{Arg, ValueExt};
+use clap::{ArgAction, CommandFactory, FromArgMatches};
+use lexopt::Arg;
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
