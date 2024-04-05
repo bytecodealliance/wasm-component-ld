@@ -1,9 +1,7 @@
 name: CI
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+  merge_group:
 
 # Cancel any in-flight jobs for the same PR/branch so there's only one active
 # at a time
@@ -11,7 +9,49 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
+  build:
+    name: Build wasm-component-ld
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+        - build: x86_64-linux
+          os: ubuntu-latest
+        - build: x86_64-macos
+          os: macos-latest
+        - build: aarch64-macos
+          os: macos-latest
+          target: aarch64-apple-darwin
+        - build: x86_64-windows
+          os: windows-latest
+        - build: aarch64-linux
+          os: ubuntu-latest
+          target: aarch64-unknown-linux-gnu
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - run: rustup update stable --no-self-update && rustup default stable
+    - uses: bytecodealliance/wasmtime/.github/actions/binary-compatible-builds@v17.0.1
+      with:
+        name: ${{ matrix.build }}
+      if: matrix.build != 'wasm32-wasi'
+    - run: |
+        echo CARGO_BUILD_TARGET=${{ matrix.target }} >> $GITHUB_ENV
+        rustup target add ${{ matrix.target }}
+      if: matrix.target != ''
+    - run: $CENTOS cargo build --release
+    - run: ./ci/build-tarballs.sh "${{ matrix.build }}" "${{ matrix.target }}"
+    - uses: actions/upload-artifact@v3
+      with:
+        name: bins-${{ matrix.build }}
+        path: dist
+
   test:
     name: Test
     runs-on: ${{ matrix.os }}
@@ -19,15 +59,21 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            rust: stable
+          - os: ubuntu-latest
+            rust: beta
+          - os: ubuntu-latest
+            rust: nightly
           - os: macos-latest
+            rust: stable
           - os: windows-latest
+            rust: stable
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Install Rust (rustup)
-      run: rustup update stable --no-self-update && rustup default stable
-      shell: bash
+      run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
     - run: rustup target add wasm32-wasi
     - run: cargo test --locked
 
@@ -38,4 +84,28 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install Rust
       run: rustup update stable && rustup default stable && rustup component add rustfmt
-    - run: cargo fmt --check
+    # Note that this doesn't use `cargo fmt` because that doesn't format
+    # modules-defined-in-macros which is in use in `wast` for example. This is
+    # the best alternative I can come up with at this time
+    - run: find . -name '*.rs' | xargs rustfmt --check --edition 2021
+
+  # "Join node" which the merge queue waits on.
+  ci-status:
+    name: Record the result of testing and building steps
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - rustfmt
+      - build
+    if: always()
+
+    steps:
+    - name: Successful test and build
+      if: ${{ !(contains(needs.*.result, 'failure')) }}
+      run: exit 0
+    - name: Failing test and build
+      if: ${{ contains(needs.*.result, 'failure') }}
+      run: exit 1
+    - name: Report failure on cancellation
+      if: ${{ contains(needs.*.result, 'cancelled') || cancelled() }}
+      run: exit 1
