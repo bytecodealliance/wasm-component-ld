@@ -73,7 +73,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
 
-    - use: softprops/action-gh-release@v1
+    - uses: softprops/action-gh-release@v1
       if: steps.tag.outputs.push_tag == 'yes'
       with:
         files: "dist/*"
