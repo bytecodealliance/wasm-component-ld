@@ -9,6 +9,7 @@ readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.80"
+clap = { version = "4.5.4", features = ['derive'] }
 lexopt = "0.3.0"
 tempfile = "3.10.0"
 wasmparser = "0.202.0"
