@@ -15,7 +15,7 @@ jobs:
     name: Publish artifacts of build
     runs-on: ubuntu-latest
     if: |
-      github.repository_owner == 'alexcrichton'
+      github.repository_owner == 'bytecodealliance'
       && github.event_name == 'push'
       && github.ref == 'refs/heads/main'
     steps:
