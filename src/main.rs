@@ -125,6 +125,7 @@ struct App {
 /// wasm module will be turned into a component using component tooling and
 /// embedded information in the core wasm module.
 #[derive(clap::Parser, Default)]
+#[command(version)]
 struct ComponentLdArgs {
     /// Instructs the "proxy" adapter to be used for use in a `wasi:http/proxy`
     /// world.
