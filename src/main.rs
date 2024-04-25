@@ -105,6 +105,12 @@ const LLD_FLAGS: &[LldFlag] = &[
         short: Some('m'),
         value: Some("ARCH"),
     },
+    LldFlag {
+        clap_name: "strip-debug",
+        long: Some("strip-debug"),
+        short: None,
+        value: None,
+    },
 ];
 
 const LLD_LONG_FLAGS_NONSTANDARD: &[&str] = &["-shared"];
