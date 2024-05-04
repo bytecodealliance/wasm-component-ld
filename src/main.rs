@@ -3,8 +3,9 @@ use clap::{ArgAction, CommandFactory, FromArgMatches};
 use lexopt::Arg;
 use std::env;
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 use wasmparser::Payload;
 
 struct LldFlag {
@@ -171,10 +172,10 @@ struct App {
 #[derive(clap::Parser, Default)]
 #[command(version)]
 struct ComponentLdArgs {
-    /// Instructs the "proxy" adapter to be used for use in a `wasi:http/proxy`
-    /// world.
-    #[clap(long)]
-    wasi_proxy_adapter: bool,
+    /// Which default WASI adapter, if any, to use when creating the output
+    /// component.
+    #[clap(long, name = "command|reactor|proxy|none")]
+    wasi_adapter: Option<WasiAdapter>,
 
     /// Location of where to find `wasm-ld`.
     ///
@@ -199,6 +200,58 @@ struct ComponentLdArgs {
     /// This defaults to `true`.
     #[clap(long)]
     validate_component: Option<bool>,
+
+    /// Adapters to use when creating the final component.
+    #[clap(long = "adapt", value_name = "[NAME=]MODULE", value_parser = parse_adapter)]
+    adapters: Vec<(String, Vec<u8>)>,
+}
+
+fn parse_adapter(s: &str) -> Result<(String, Vec<u8>)> {
+    let (name, path) = parse_optionally_name_file(s);
+    let wasm = wat::parse_file(path)?;
+    Ok((name.to_string(), wasm))
+}
+
+fn parse_optionally_name_file(s: &str) -> (&str, &str) {
+    let mut parts = s.splitn(2, '=');
+    let name_or_path = parts.next().unwrap();
+    match parts.next() {
+        Some(path) => (name_or_path, path),
+        None => {
+            let name = Path::new(name_or_path)
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap();
+            let name = match name.find('.') {
+                Some(i) => &name[..i],
+                None => name,
+            };
+            (name, name_or_path)
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+enum WasiAdapter {
+    Command,
+    Reactor,
+    Proxy,
+    None,
+}
+
+impl FromStr for WasiAdapter {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "none" => Ok(WasiAdapter::None),
+            "command" => Ok(WasiAdapter::Command),
+            "reactor" => Ok(WasiAdapter::Reactor),
+            "proxy" => Ok(WasiAdapter::Proxy),
+            _ => bail!("unknown wasi adapter {s}, must be one of: none, command, reactor, proxy"),
+        }
+    }
 }
 
 fn main() {
@@ -426,22 +479,35 @@ impl App {
             }
         }
 
-        let adapter = if exports_start {
-            &command_adapter[..]
-        } else if self.component.wasi_proxy_adapter {
-            &proxy_adapter[..]
-        } else {
-            &reactor_adapter[..]
-        };
-
-        let component = wit_component::ComponentEncoder::default()
+        let mut encoder = wit_component::ComponentEncoder::default()
             .module(&core_module)
             .context("failed to parse core wasm for componentization")?
-            .adapter("wasi_snapshot_preview1", adapter)
-            .context("failed to inject adapter")?
-            .validate(self.component.validate_component.unwrap_or(true))
-            .encode()
-            .context("failed to encode component")?;
+            .validate(self.component.validate_component.unwrap_or(true));
+        let adapter = self.component.wasi_adapter.unwrap_or(if exports_start {
+            WasiAdapter::Command
+        } else {
+            WasiAdapter::Reactor
+        });
+        let adapter = match adapter {
+            WasiAdapter::Command => Some(&command_adapter[..]),
+            WasiAdapter::Reactor => Some(&reactor_adapter[..]),
+            WasiAdapter::Proxy => Some(&proxy_adapter[..]),
+            WasiAdapter::None => None,
+        };
+
+        if let Some(adapter) = adapter {
+            encoder = encoder
+                .adapter("wasi_snapshot_preview1", adapter)
+                .context("failed to inject adapter")?;
+        }
+
+        for (name, adapter) in self.component.adapters.iter() {
+            encoder = encoder
+                .adapter(name, adapter)
+                .with_context(|| format!("failed to inject adapter {name:?}"))?;
+        }
+
+        let component = encoder.encode().context("failed to encode component")?;
 
         std::fs::write(self.component.output.as_ref().unwrap(), &component)
             .context("failed to write output file")?;

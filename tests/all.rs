@@ -37,12 +37,7 @@ fn compile(args: &[&str], src: &str) -> Vec<u8> {
 
 fn assert_component(bytes: &[u8]) {
     assert!(wasmparser::Parser::is_component(&bytes));
-    wasmparser::Validator::new_with_features(wasmparser::WasmFeatures {
-        component_model: true,
-        ..wasmparser::WasmFeatures::default()
-    })
-    .validate_all(&bytes)
-    .unwrap();
+    wasmparser::Validator::new().validate_all(&bytes).unwrap();
 }
 
 #[test]
