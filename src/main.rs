@@ -11,106 +11,144 @@ struct LldFlag {
     clap_name: &'static str,
     long: Option<&'static str>,
     short: Option<char>,
-    value: Option<&'static str>,
+    value: FlagValue,
+}
+
+enum FlagValue {
+    None,
+    Required(&'static str),
+    Optional(&'static str),
+}
+
+macro_rules! flag {
+    ($(-$short:ident /)? --$($flag:tt)*) => {
+        LldFlag {
+            clap_name: concat!("long_", $(stringify!($flag),)*),
+            long: Some(flag!(@name [] $($flag)*)),
+            short: flag!(@short $($short)?),
+            value: flag!(@value $($flag)*),
+        }
+    };
+
+    (-$flag:tt $(=$val:tt)?) => {
+        LldFlag {
+            clap_name: concat!("short_", stringify!($flag)),
+            long: None,
+            short: Some(flag!(@char $flag)),
+            value: flag!(@value $(=$val)?),
+        }
+    };
+
+    (@name [$($name:tt)*] $n:ident $($rest:tt)*) => (flag!(@name [$($name)* $n] $($rest)*));
+    (@name [$($name:tt)*] - $($rest:tt)*) => (flag!(@name [$($name)* -] $($rest)*));
+    (@name [$($name:tt)*] = $($rest:tt)*) => (concat!($(stringify!($name),)*));
+    (@name [$($name:tt)*] [= $($rest:tt)*]) => (concat!($(stringify!($name),)*));
+    (@name [$($name:tt)*]) => (concat!($(stringify!($name),)*));
+
+    (@value $n:ident $($rest:tt)*) => (flag!(@value $($rest)*));
+    (@value - $($rest:tt)*) => (flag!(@value $($rest)*));
+    (@value = $name:ident) => (FlagValue::Required(stringify!($name)));
+    (@value [= $name:ident]) => (FlagValue::Optional(stringify!($name)));
+    (@value) => (FlagValue::None);
+
+    (@short) => (None);
+    (@short $name:ident) => (Some(flag!(@char $name)));
+
+    (@char $name:ident) => ({
+        let name = stringify!($name);
+        assert!(name.len() == 1);
+        name.as_bytes()[0] as char
+    });
 }
 
 const LLD_FLAGS: &[LldFlag] = &[
-    LldFlag {
-        clap_name: "no-entry",
-        long: Some("no-entry"),
-        short: None,
-        value: None,
-    },
-    LldFlag {
-        clap_name: "no-demangle",
-        long: Some("no-demangle"),
-        short: None,
-        value: None,
-    },
-    LldFlag {
-        clap_name: "allow-undefined",
-        long: Some("allow-undefined"),
-        short: None,
-        value: None,
-    },
-    LldFlag {
-        clap_name: "stack-first",
-        long: Some("stack-first"),
-        short: None,
-        value: None,
-    },
-    LldFlag {
-        clap_name: "gc-sections",
-        long: Some("gc-sections"),
-        short: None,
-        value: None,
-    },
-    LldFlag {
-        clap_name: "whole-archive",
-        long: Some("whole-archive"),
-        short: None,
-        value: None,
-    },
-    LldFlag {
-        clap_name: "no-whole-archive",
-        long: Some("no-whole-archive"),
-        short: None,
-        value: None,
-    },
-    LldFlag {
-        clap_name: "fatal-warnings",
-        long: Some("fatal-warnings"),
-        short: None,
-        value: None,
-    },
-    LldFlag {
-        clap_name: "export",
-        long: Some("export"),
-        short: None,
-        value: Some("SYM"),
-    },
-    LldFlag {
-        clap_name: "entry",
-        long: Some("entry"),
-        short: None,
-        value: Some("SYM"),
-    },
-    LldFlag {
-        clap_name: "lib",
-        long: None,
-        short: Some('l'),
-        value: Some("LIB"),
-    },
-    LldFlag {
-        clap_name: "link-path",
-        long: None,
-        short: Some('L'),
-        value: Some("PATH"),
-    },
-    LldFlag {
-        clap_name: "extra",
-        long: None,
-        short: Some('z'),
-        value: Some("OPT"),
-    },
-    LldFlag {
-        clap_name: "optimize",
-        long: None,
-        short: Some('O'),
-        value: Some("LEVEL"),
-    },
-    LldFlag {
-        clap_name: "arch",
-        long: None,
-        short: Some('m'),
-        value: Some("ARCH"),
-    },
-    LldFlag {
-        clap_name: "strip-debug",
-        long: Some("strip-debug"),
-        short: None,
-        value: None,
-    },
+    flag! { --allow-undefined-file=PATH },
+    flag! { --allow-undefined },
+    flag! { --Bdynamic },
+    flag! { --Bstatic },
+    flag! { --Bsymbolic },
+    flag! { --build-id[=VAL] },
+    flag! { --call_shared },
+    flag! { --check-features },
+    flag! { --color-diagnostics[=VALUE] },
+    flag! { --compress-relocations },
+    flag! { --demangle },
+    flag! { --dn },
+    flag! { --dy },
+    flag! { --emit-relocs },
+    flag! { --end-lib },
+    flag! { --entry=SYM },
+    flag! { --error-limit=N },
+    flag! { --error-unresolved-symbols },
+    flag! { --experimental-pic },
+    flag! { --export-all },
+    flag! { -E / --export-dynamic },
+    flag! { --export-if-defined=SYM },
+    flag! { --export-memory[=NAME] },
+    flag! { --export-table },
+    flag! { --export=SYM },
+    flag! { --extra-features=LIST },
+    flag! { --fatal-warnings },
+    flag! { --features=LIST },
+    flag! { --gc-sections },
+    flag! { --global-base=VALUE },
+    flag! { --growable-table },
+    flag! { --import-memory[=NAME] },
+    flag! { --import-table },
+    flag! { --import-undefined },
+    flag! { --initial-heap=SIZE },
+    flag! { --initial-memory=SIZE },
+    flag! { --keep-section=NAME },
+    flag! { --lto-CGO=LEVEL },
+    flag! { --lto-debug-pass-manager },
+    flag! { --lto-O=LEVEL },
+    flag! { --lto-partitions=NUM },
+    flag! { -L=PATH },
+    flag! { -l=LIB },
+    flag! { --Map=FILE },
+    flag! { --max-memory=SIZE },
+    flag! { --merge-data-segments },
+    flag! { --mllvm=FLAG },
+    flag! { -m=ARCH },
+    flag! { --no-check-features },
+    flag! { --no-color-diagnostics },
+    flag! { --no-demangle },
+    flag! { --no-entry },
+    flag! { --no-export-dynamic },
+    flag! { --no-gc-sections },
+    flag! { --no-merge-data-segments },
+    flag! { --no-pie },
+    flag! { --no-print-gc-sections },
+    flag! { --no-whole-archive },
+    flag! { --non_shared },
+    flag! { -O=LEVEL },
+    flag! { --pie },
+    flag! { --print-gc-sections },
+    flag! { -M / --print-map },
+    flag! { --relocatable },
+    flag! { --save-temps },
+    flag! { --shared-memory },
+    flag! { --shared },
+    flag! { --soname=VALUE },
+    flag! { --stack-first },
+    flag! { --start-lib },
+    flag! { --static },
+    flag! { -s / --strip-all },
+    flag! { -S / --strip-debug },
+    flag! { --table-base=VALUE },
+    flag! { --thinlto-cache-dir=PATH },
+    flag! { --thinlto-cache-policy=VALUE },
+    flag! { --thinlto-jobs=N },
+    flag! { --threads=N },
+    flag! { -y / --trace-symbol=SYM },
+    flag! { -t / --trace },
+    flag! { --undefined=SYM },
+    flag! { --unresolved-symbols=VALUE },
+    flag! { --warn-unresolved-symbols },
+    flag! { --whole-archive },
+    flag! { --why-extract=MEMBER },
+    flag! { --wrap=VALUE },
+    flag! { -z=OPT },
 ];
 
 const LLD_LONG_FLAGS_NONSTANDARD: &[&str] = &["-shared"];
@@ -141,16 +179,26 @@ struct ComponentLdArgs {
     /// Location of where to find `wasm-ld`.
     ///
     /// If not specified this is automatically detected.
-    #[clap(long)]
+    #[clap(long, name = "PATH")]
     wasm_ld_path: Option<PathBuf>,
 
-    /// Quoting syntax for response files, forwarded to LLD.
-    #[clap(long)]
+    /// Quoting syntax for response files.
+    #[clap(long, name = "STYLE")]
     rsp_quoting: Option<String>,
 
     /// Where to place the component output.
-    #[clap(short)]
+    #[clap(short, long)]
     output: Option<PathBuf>,
+
+    /// Print verbose output.
+    #[clap(long)]
+    verbose: bool,
+
+    /// Whether or not the output component is validated.
+    ///
+    /// This defaults to `true`.
+    #[clap(long)]
+    validate_component: Option<bool>,
 }
 
 fn main() {
@@ -210,6 +258,52 @@ impl App {
         let mut component_ld_args = vec![std::env::args_os().nth(0).unwrap()];
         let mut shared = false;
         let mut parser = lexopt::Parser::from_iter(args);
+
+        fn handle_lld_arg(
+            lld: &LldFlag,
+            parser: &mut lexopt::Parser,
+            lld_args: &mut Vec<OsString>,
+        ) -> Result<()> {
+            let mut arg = OsString::new();
+            match (lld.short, lld.long) {
+                (_, Some(long)) => {
+                    arg.push("--");
+                    arg.push(long);
+                }
+                (Some(short), _) => {
+                    arg.push("-");
+                    arg.push(short.encode_utf8(&mut [0; 5]));
+                }
+                (None, None) => unreachable!(),
+            }
+            match lld.value {
+                FlagValue::None => {
+                    lld_args.push(arg);
+                }
+
+                // LLD doesn't support options of the form `-l=c` or` -O=2` so
+                // pass these unconditionally as two arguments.
+                FlagValue::Required(_) => {
+                    lld_args.push(arg);
+                    lld_args.push(parser.value()?);
+                }
+
+                // If the value is optional then the argument must have an `=`
+                // in the argument itself.
+                FlagValue::Optional(_) => {
+                    match parser.optional_value() {
+                        Some(val) => {
+                            arg.push("=");
+                            arg.push(&val);
+                        }
+                        None => {}
+                    }
+                    lld_args.push(arg);
+                }
+            }
+            Ok(())
+        }
+
         loop {
             if let Some(mut args) = parser.try_raw_args() {
                 if let Some(arg) = args.peek() {
@@ -231,10 +325,7 @@ impl App {
                 }
                 Some(Arg::Short(c)) => match LLD_FLAGS.iter().find(|f| f.short == Some(c)) {
                     Some(lld) => {
-                        lld_args.push(format!("-{c}").into());
-                        if lld.value.is_some() {
-                            lld_args.push(parser.value()?);
-                        }
+                        handle_lld_arg(lld, &mut parser, &mut lld_args)?;
                     }
                     None => {
                         component_ld_args.push(format!("-{c}").into());
@@ -249,10 +340,7 @@ impl App {
                 },
                 Some(Arg::Long(c)) => match LLD_FLAGS.iter().find(|f| f.long == Some(c)) {
                     Some(lld) => {
-                        lld_args.push(format!("--{c}").into());
-                        if lld.value.is_some() {
-                            lld_args.push(parser.value()?);
-                        }
+                        handle_lld_arg(lld, &mut parser, &mut lld_args)?;
                     }
                     None => {
                         component_ld_args.push(format!("--{c}").into());
@@ -298,6 +386,9 @@ impl App {
             cmd.arg("-o").arg(lld_output.path());
         }
 
+        if self.component.verbose {
+            eprintln!("running LLD: {cmd:?}");
+        }
         let status = cmd
             .status()
             .with_context(|| format!("failed to spawn {linker:?}"))?;
@@ -348,6 +439,7 @@ impl App {
             .context("failed to parse core wasm for componentization")?
             .adapter("wasi_snapshot_preview1", adapter)
             .context("failed to inject adapter")?
+            .validate(self.component.validate_component.unwrap_or(true))
             .encode()
             .context("failed to encode component")?;
 
@@ -360,6 +452,9 @@ impl App {
     fn lld(&self) -> Command {
         let mut lld = self.find_lld();
         lld.args(&self.lld_args);
+        if self.component.verbose {
+            lld.arg("--verbose");
+        }
         lld
     }
 
@@ -406,14 +501,24 @@ fn add_wasm_ld_options(mut command: clap::Command) -> clap::Command {
         if let Some(long) = flag.long {
             arg = arg.long(long);
         }
-        arg = arg.action(if flag.value.is_some() {
-            ArgAction::Set
-        } else {
-            ArgAction::SetTrue
-        });
+        arg = match flag.value {
+            FlagValue::Required(name) => arg.action(ArgAction::Set).value_name(name),
+            FlagValue::Optional(name) => arg
+                .action(ArgAction::Set)
+                .value_name(name)
+                .num_args(0..=1)
+                .require_equals(true),
+            FlagValue::None => arg.action(ArgAction::SetTrue),
+        };
         arg = arg.help_heading("Options forwarded to `wasm-ld`");
         command = command.arg(arg);
     }
 
     command
+}
+
+#[test]
+fn verify_app() {
+    ComponentLdArgs::command().debug_assert();
+    add_wasm_ld_options(ComponentLdArgs::command()).debug_assert();
 }
