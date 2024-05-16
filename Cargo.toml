@@ -4,8 +4,23 @@ version = "0.5.0"
 edition = "2021"
 license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
 description = "Linker for `wasm32-wasip2`"
-repository = "https://github.com/alexcrichton/wasm-component-ld"
+repository = "https://github.com/bytecodealliance/wasm-component-ld"
 readme = "README.md"
+
+[package.metadata.binstall]
+pkg-url = "{repo}/releases/download/v{version}/{name}-v{version}-{target-arch}-{target-family}{archive-suffix}"
+bin-dir = "{name}-v{version}-{target-arch}-{target-family}/{bin}{binary-ext}"
+pkg-fmt = "tgz"
+[package.metadata.binstall.overrides.x86_64-apple-darwin]
+pkg-url = "{repo}/releases/download/v{version}/{name}-v{version}-{target-arch}-macos{archive-suffix}"
+bin-dir = "{name}-v{version}-{target-arch}-macos/{bin}{binary-ext}"
+[package.metadata.binstall.overrides.aarch64-apple-darwin]
+pkg-url = "{repo}/releases/download/v{version}/{name}-v{version}-{target-arch}-macos{archive-suffix}"
+bin-dir = "{name}-v{version}-{target-arch}-macos/{bin}{binary-ext}"
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+[package.metadata.binstall.overrides.x86_64-pc-windows-gnu]
+pkg-fmt = "zip"
 
 [dependencies]
 anyhow = "1.0.80"

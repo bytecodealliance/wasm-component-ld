@@ -9,11 +9,7 @@ rm -rf tmp
 mkdir tmp
 mkdir -p dist
 
-tag=dev
-if [[ $GITHUB_REF == refs/tags/* ]]; then
-  tag=${GITHUB_REF:10}
-fi
-
+tag=$(./ci/print-current-version.sh)
 bin_pkgname=wasm-component-ld-$tag-$platform
 
 mkdir tmp/$bin_pkgname
