@@ -9,7 +9,7 @@ rm -rf tmp
 mkdir tmp
 mkdir -p dist
 
-tag=$(./ci/print-current-version.sh)
+tag=v$(./ci/print-current-version.sh)
 bin_pkgname=wasm-component-ld-$tag-$platform
 
 mkdir tmp/$bin_pkgname
