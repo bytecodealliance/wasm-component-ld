@@ -8,6 +8,20 @@ use std::process::Command;
 use std::str::FromStr;
 use wasmparser::Payload;
 
+/// Representation of a flag passed to `wasm-ld`
+///
+/// Note that the parsing of flags in `wasm-ld` is not as uniform as parsing
+/// arguments via `clap`. For example if `--foo bar` is supported that doesn't
+/// mean that `--foo=bar` is supported. Similarly some options such as `--foo`
+/// support optional values as `--foo=bar` but can't be specified as
+/// `--foo bar`.
+///
+/// Finally there's currently only one "weird" flag which is `-shared` which has
+/// a single dash but a long name. That's specially handled elsewhere.
+///
+/// The general goal here is that we want to inherit `wasm-ld`'s CLI but also
+/// want to be able to reserve CLI flags for this linker itself, so `wasm-ld`'s
+/// arguments are parsed where our own are intermixed.
 struct LldFlag {
     clap_name: &'static str,
     long: Option<&'static str>,
@@ -16,12 +30,37 @@ struct LldFlag {
 }
 
 enum FlagValue {
+    /// This option has no value, e.g. `-f` or `--foo`
     None,
-    Required(&'static str),
+
+    /// This option's value must be specified with `=`, for example `--foo=bar`
+    RequiredEqual(&'static str),
+
+    /// This option's value must be specified with ` `, for example `--foo bar`.
+    ///
+    /// I think that `wasm-ld` supports both `-f foo` and `-ffoo` for
+    /// single-character flags, but I haven't tested as putting a space seems to
+    /// work.
+    RequiredSpace(&'static str),
+
+    /// This option's value is optional but if specified it must use an `=` for
+    /// example `--foo=bar` or `--foo`.
     Optional(&'static str),
 }
 
+/// This is a large macro which is intended to take CLI-looking syntax and turn
+/// each individual flag into a `LldFlag` specified above.
 macro_rules! flag {
+    // Long options specified as:
+    //
+    //     -f / --foo
+    //
+    // or just
+    //
+    //     --foo
+    //
+    // Options can look like `--foo`, `--foo=bar`, `--foo[=bar]`, or
+    // `--foo bar` to match the kinds of flags that LLD supports.
     ($(-$short:ident /)? --$($flag:tt)*) => {
         LldFlag {
             clap_name: concat!("long_", $(stringify!($flag),)*),
@@ -31,30 +70,50 @@ macro_rules! flag {
         }
     };
 
-    (-$flag:tt $(=$val:tt)?) => {
+    // Short options specified as `-f` or `-f foo`.
+    (-$flag:tt $($val:tt)*) => {
         LldFlag {
             clap_name: concat!("short_", stringify!($flag)),
             long: None,
             short: Some(flag!(@char $flag)),
-            value: flag!(@value $(=$val)?),
+            value: flag!(@value $flag $($val)*),
         }
     };
 
-    (@name [$($name:tt)*] $n:ident $($rest:tt)*) => (flag!(@name [$($name)* $n] $($rest)*));
-    (@name [$($name:tt)*] - $($rest:tt)*) => (flag!(@name [$($name)* -] $($rest)*));
-    (@name [$($name:tt)*] = $($rest:tt)*) => (concat!($(stringify!($name),)*));
-    (@name [$($name:tt)*] [= $($rest:tt)*]) => (concat!($(stringify!($name),)*));
+    // Generates the long name of a flag, collected within the `[]` argument to
+    // this macro. This will iterate over the flag given as the rest of the
+    // macro arguments and collect values into `[...]` and recurse.
+    //
+    // The first recursion case handles `foo-bar-baz=..` where Rust tokenizes
+    // this as `foo` then `-` then `bar` then ... If this is found then `foo-`
+    // is added to the name and then the macro recurses.
+    (@name [$($name:tt)*] $n:ident-$($rest:tt)*) => (flag!(@name [$($name)* $n-] $($rest)*));
+    // These are the ways options are represented, either `--foo bar`,
+    // `--foo=bar`, `--foo=bar`, or `--foo`. In all these cases discard the
+    // value itself and then recurse.
+    (@name [$($name:tt)*] $n:ident $_value:ident) => (flag!(@name [$($name)* $n]));
+    (@name [$($name:tt)*] $n:ident=$_value:ident) => (flag!(@name [$($name)* $n]));
+    (@name [$($name:tt)*] $n:ident[=$_value:ident]) => (flag!(@name [$($name)* $n]));
+    (@name [$($name:tt)*] $n:ident) => (flag!(@name [$($name)* $n]));
+    // If there's nothing left then the `$name` has collected everything so
+    // it's stringifyied and caoncatenated.
     (@name [$($name:tt)*]) => (concat!($(stringify!($name),)*));
 
-    (@value $n:ident $($rest:tt)*) => (flag!(@value $($rest)*));
-    (@value - $($rest:tt)*) => (flag!(@value $($rest)*));
-    (@value = $name:ident) => (FlagValue::Required(stringify!($name)));
-    (@value [= $name:ident]) => (FlagValue::Optional(stringify!($name)));
-    (@value) => (FlagValue::None);
+    // This parses the value-style of the flag given. The recursion here looks
+    // similar to `@name` above. except that the four terminal cases all
+    // correspond to different variants of `FlagValue`.
+    (@value $n:ident - $($rest:tt)*) => (flag!(@value $($rest)*));
+    (@value $_flag:ident = $name:ident) => (FlagValue::RequiredEqual(stringify!($name)));
+    (@value $_flag:ident $name:ident) => (FlagValue::RequiredSpace(stringify!($name)));
+    (@value $_flag:ident [= $name:ident]) => (FlagValue::Optional(stringify!($name)));
+    (@value $_flag:ident) => (FlagValue::None);
 
+    // Helper for flags that have both a long and a short form to parse whether
+    // a short form was provided.
     (@short) => (None);
     (@short $name:ident) => (Some(flag!(@char $name)));
 
+    // Helper for getting the `char` of a short flag.
     (@char $name:ident) => ({
         let name = stringify!($name);
         assert!(name.len() == 1);
@@ -78,7 +137,7 @@ const LLD_FLAGS: &[LldFlag] = &[
     flag! { --dy },
     flag! { --emit-relocs },
     flag! { --end-lib },
-    flag! { --entry=SYM },
+    flag! { --entry SYM },
     flag! { --error-limit=N },
     flag! { --error-unresolved-symbols },
     flag! { --experimental-pic },
@@ -104,13 +163,13 @@ const LLD_FLAGS: &[LldFlag] = &[
     flag! { --lto-debug-pass-manager },
     flag! { --lto-O=LEVEL },
     flag! { --lto-partitions=NUM },
-    flag! { -L=PATH },
-    flag! { -l=LIB },
+    flag! { -L PATH },
+    flag! { -l LIB },
     flag! { --Map=FILE },
     flag! { --max-memory=SIZE },
     flag! { --merge-data-segments },
     flag! { --mllvm=FLAG },
-    flag! { -m=ARCH },
+    flag! { -m ARCH },
     flag! { --no-check-features },
     flag! { --no-color-diagnostics },
     flag! { --no-demangle },
@@ -122,7 +181,7 @@ const LLD_FLAGS: &[LldFlag] = &[
     flag! { --no-print-gc-sections },
     flag! { --no-whole-archive },
     flag! { --non_shared },
-    flag! { -O=LEVEL },
+    flag! { -O LEVEL },
     flag! { --pie },
     flag! { --print-gc-sections },
     flag! { -M / --print-map },
@@ -149,7 +208,7 @@ const LLD_FLAGS: &[LldFlag] = &[
     flag! { --whole-archive },
     flag! { --why-extract=MEMBER },
     flag! { --wrap=VALUE },
-    flag! { -z=OPT },
+    flag! { -z OPT },
 ];
 
 const LLD_LONG_FLAGS_NONSTANDARD: &[&str] = &["-shared"];
@@ -334,11 +393,15 @@ impl App {
                     lld_args.push(arg);
                 }
 
-                // LLD doesn't support options of the form `-l=c` or` -O=2` so
-                // pass these unconditionally as two arguments.
-                FlagValue::Required(_) => {
+                FlagValue::RequiredSpace(_) => {
                     lld_args.push(arg);
                     lld_args.push(parser.value()?);
+                }
+
+                FlagValue::RequiredEqual(_) => {
+                    arg.push("=");
+                    arg.push(&parser.value()?);
+                    lld_args.push(arg);
                 }
 
                 // If the value is optional then the argument must have an `=`
@@ -568,7 +631,9 @@ fn add_wasm_ld_options(mut command: clap::Command) -> clap::Command {
             arg = arg.long(long);
         }
         arg = match flag.value {
-            FlagValue::Required(name) => arg.action(ArgAction::Set).value_name(name),
+            FlagValue::RequiredEqual(name) | FlagValue::RequiredSpace(name) => {
+                arg.action(ArgAction::Set).value_name(name)
+            }
             FlagValue::Optional(name) => arg
                 .action(ArgAction::Set)
                 .value_name(name)

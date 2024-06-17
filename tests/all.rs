@@ -101,3 +101,19 @@ fn main() {
     );
     assert_component(&output);
 }
+
+#[test]
+fn linker_flags() {
+    let output = compile(
+        &[
+            "-Clink-arg=--max-memory=65536",
+            "-Clink-arg=-zstack-size=32",
+            "-Clink-arg=--global-base=2048",
+        ],
+        r#"
+fn main() {
+}
+        "#,
+    );
+    assert_component(&output);
+}
