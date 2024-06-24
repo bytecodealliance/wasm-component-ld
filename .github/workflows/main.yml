@@ -41,7 +41,6 @@ jobs:
     - uses: bytecodealliance/wasmtime/.github/actions/binary-compatible-builds@v17.0.1
       with:
         name: ${{ matrix.build }}
-      if: matrix.build != 'wasm32-wasi'
     - run: |
         echo CARGO_BUILD_TARGET=${{ matrix.target }} >> $GITHUB_ENV
         rustup target add ${{ matrix.target }}
@@ -75,7 +74,7 @@ jobs:
         submodules: true
     - name: Install Rust (rustup)
       run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
-    - run: rustup target add wasm32-wasi
+    - run: rustup target add wasm32-wasip1
     - run: cargo test --locked
 
   rustfmt:
