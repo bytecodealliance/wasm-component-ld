@@ -10,7 +10,7 @@ fn compile(args: &[&str], src: &str) -> Vec<u8> {
     myself.push("wasm-component-ld");
     let mut rustc = Command::new("rustc")
         .arg("--target")
-        .arg("wasm32-wasi")
+        .arg("wasm32-wasip1")
         .arg("-")
         .arg("-o")
         .arg("-")
