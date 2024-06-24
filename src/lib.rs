@@ -313,7 +313,7 @@ impl FromStr for WasiAdapter {
     }
 }
 
-fn main() {
+pub fn main() {
     let err = match run() {
         Ok(()) => return,
         Err(e) => e,
