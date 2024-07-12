@@ -401,6 +401,7 @@ dependencies = [
  "wasmparser",
  "wat",
  "wit-component",
+ "wit-parser",
 ]
 
 [[package]]
