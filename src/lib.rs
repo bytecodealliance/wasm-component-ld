@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use wasmparser::Payload;
+use wit_component::StringEncoding;
+use wit_parser::{Resolve, WorldId};
 
 /// Representation of a flag passed to `wasm-ld`
 ///
@@ -263,12 +265,36 @@ struct ComponentLdArgs {
     /// Adapters to use when creating the final component.
     #[clap(long = "adapt", value_name = "[NAME=]MODULE", value_parser = parse_adapter)]
     adapters: Vec<(String, Vec<u8>)>,
+
+    /// WIT file representing additional component type information to use.
+    ///
+    /// May be specified more than once.
+    ///
+    /// See also the `--string-encoding` option.
+    #[clap(long = "component-type", value_name = "WIT_FILE")]
+    component_types: Vec<PathBuf>,
+
+    /// String encoding to use when creating the final component.
+    ///
+    /// This may be either "utf8", "utf16", or "compact-utf16".  This value is
+    /// only used when one or more `--component-type` options are specified.
+    #[clap(long, value_parser = parse_encoding, default_value = "utf8")]
+    string_encoding: StringEncoding,
 }
 
 fn parse_adapter(s: &str) -> Result<(String, Vec<u8>)> {
     let (name, path) = parse_optionally_name_file(s);
     let wasm = wat::parse_file(path)?;
     Ok((name.to_string(), wasm))
+}
+
+fn parse_encoding(s: &str) -> Result<StringEncoding> {
+    Ok(match s {
+        "utf8" => StringEncoding::UTF8,
+        "utf16" => StringEncoding::UTF16,
+        "compact-utf16" => StringEncoding::CompactUTF16,
+        _ => bail!("unknown string encoding: {s:?}"),
+    })
 }
 
 fn parse_optionally_name_file(s: &str) -> (&str, &str) {
@@ -462,8 +488,11 @@ impl App {
                         component_ld_args.push(format!("--{c}").into());
                         if let Some(arg) = command.get_arguments().find(|a| a.get_long() == Some(c))
                         {
-                            if let ArgAction::Set = arg.get_action() {
-                                component_ld_args.push(parser.value()?);
+                            match arg.get_action() {
+                                ArgAction::Set | ArgAction::Append => {
+                                    component_ld_args.push(parser.value()?)
+                                }
+                                _ => (),
                             }
                         }
                     }
@@ -521,7 +550,7 @@ impl App {
         let reactor_adapter = include_bytes!("wasi_snapshot_preview1.reactor.wasm");
         let command_adapter = include_bytes!("wasi_snapshot_preview1.command.wasm");
         let proxy_adapter = include_bytes!("wasi_snapshot_preview1.proxy.wasm");
-        let core_module = std::fs::read(lld_output.path())
+        let mut core_module = std::fs::read(lld_output.path())
             .with_context(|| format!("failed to read {linker:?} output"))?;
 
         // Inspect the output module to see if it's a command or reactor.
@@ -540,6 +569,36 @@ impl App {
                 }
                 _ => {}
             }
+        }
+
+        if !self.component.component_types.is_empty() {
+            let mut merged = None::<(Resolve, WorldId)>;
+            for wit_file in &self.component.component_types {
+                let mut resolve = Resolve::default();
+                let (packages, _) = resolve
+                    .push_path(wit_file)
+                    .with_context(|| format!("unable to add component type {wit_file:?}"))?;
+
+                let world = resolve.select_world(&packages, None)?;
+
+                if let Some((merged_resolve, merged_world)) = &mut merged {
+                    let world = merged_resolve.merge(resolve)?.map_world(world, None)?;
+                    merged_resolve.merge_worlds(world, *merged_world)?;
+                } else {
+                    merged = Some((resolve, world));
+                }
+            }
+
+            let Some((resolve, world)) = merged else {
+                unreachable!()
+            };
+
+            wit_component::embed_component_metadata(
+                &mut core_module,
+                &resolve,
+                world,
+                self.component.string_encoding,
+            )?;
         }
 
         let mut encoder = wit_component::ComponentEncoder::default()
