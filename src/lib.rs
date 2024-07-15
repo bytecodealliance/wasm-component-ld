@@ -578,13 +578,16 @@ impl App {
                 resolve
                     .push_path(wit_file)
                     .with_context(|| format!("unable to add component type {wit_file:?}"))?;
-                if resolve.worlds.len() != 1 {
-                    bail!(
-                        "expected exactly 1 world in {wit_file:?}; found {}",
-                        resolve.worlds.len()
-                    );
-                }
-                let world = resolve.worlds.iter().map(|(id, _)| id).next().unwrap();
+
+                let world = resolve.select_world(
+                    &resolve
+                        .packages
+                        .iter()
+                        .map(|(id, _)| id)
+                        .collect::<Vec<_>>(),
+                    None,
+                )?;
+
                 if let Some((merged_resolve, merged_world)) = &mut merged {
                     let world = merged_resolve.merge(resolve)?.map_world(world, None)?;
                     merged_resolve.merge_worlds(world, *merged_world)?;
