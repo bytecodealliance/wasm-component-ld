@@ -575,18 +575,11 @@ impl App {
             let mut merged = None::<(Resolve, WorldId)>;
             for wit_file in &self.component.component_types {
                 let mut resolve = Resolve::default();
-                resolve
+                let (packages, _) = resolve
                     .push_path(wit_file)
                     .with_context(|| format!("unable to add component type {wit_file:?}"))?;
 
-                let world = resolve.select_world(
-                    &resolve
-                        .packages
-                        .iter()
-                        .map(|(id, _)| id)
-                        .collect::<Vec<_>>(),
-                    None,
-                )?;
+                let world = resolve.select_world(&packages, None)?;
 
                 if let Some((merged_resolve, merged_world)) = &mut merged {
                     let world = merged_resolve.merge(resolve)?.map_world(world, None)?;
