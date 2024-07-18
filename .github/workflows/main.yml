@@ -77,6 +77,17 @@ jobs:
     - run: rustup target add wasm32-wasip1
     - run: cargo test --locked
 
+  msrv:
+    name: Build MSRV
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Install Rust (rustup)
+      run: rustup update 1.76.0 --no-self-update && rustup default 1.76.0
+    - run: cargo build
+
   rustfmt:
     name: Rustfmt
     runs-on: ubuntu-latest
@@ -97,6 +108,7 @@ jobs:
       - test
       - rustfmt
       - build
+      - msrv
     if: always()
 
     steps:

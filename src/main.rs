@@ -1,1 +1,3 @@
-use wasm_component_ld::main;
+fn main() {
+    wasm_component_ld::main();
+}
