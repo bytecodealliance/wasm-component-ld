@@ -6,6 +6,7 @@ license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
 description = "Linker for `wasm32-wasip2`"
 repository = "https://github.com/bytecodealliance/wasm-component-ld"
 readme = "README.md"
+rust-version = "1.76.0"
 
 [package.metadata.binstall]
 pkg-url = "{repo}/releases/download/v{version}/{name}-v{version}-{target-arch}-{target-family}{archive-suffix}"
