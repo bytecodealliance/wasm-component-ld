@@ -547,9 +547,12 @@ impl App {
             return Ok(());
         }
 
-        let reactor_adapter = include_bytes!("wasi_snapshot_preview1.reactor.wasm");
-        let command_adapter = include_bytes!("wasi_snapshot_preview1.command.wasm");
-        let proxy_adapter = include_bytes!("wasi_snapshot_preview1.proxy.wasm");
+        let reactor_adapter =
+            wasi_preview1_component_adapter_provider::WASI_SNAPSHOT_PREVIEW1_REACTOR_ADAPTER;
+        let command_adapter =
+            wasi_preview1_component_adapter_provider::WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER;
+        let proxy_adapter =
+            wasi_preview1_component_adapter_provider::WASI_SNAPSHOT_PREVIEW1_PROXY_ADAPTER;
         let mut core_module = std::fs::read(lld_output.path())
             .with_context(|| format!("failed to read {linker:?} output"))?;
 
