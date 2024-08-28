@@ -280,6 +280,10 @@ struct ComponentLdArgs {
     /// only used when one or more `--component-type` options are specified.
     #[clap(long, value_parser = parse_encoding, default_value = "utf8")]
     string_encoding: StringEncoding,
+
+    /// Skip the `wit-component`-based process to generate a component.
+    #[clap(long)]
+    skip_wit_component: bool,
 }
 
 fn parse_adapter(s: &str) -> Result<(String, Vec<u8>)> {
@@ -525,7 +529,7 @@ impl App {
         // output directly at the desired output location. Otherwise output to a
         // temporary location for wit-component to read and then the real output
         // is created after wit-component runs.
-        if self.shared {
+        if self.skip_wit_component() {
             cmd.arg("-o").arg(self.component.output.as_ref().unwrap());
         } else {
             cmd.arg("-o").arg(lld_output.path());
@@ -541,9 +545,7 @@ impl App {
             bail!("failed to invoke LLD: {status}");
         }
 
-        // Skip componentization with `--shared` since that's creating a shared
-        // library that's not a component yet.
-        if self.shared {
+        if self.skip_wit_component() {
             return Ok(());
         }
 
@@ -638,6 +640,13 @@ impl App {
             .context("failed to write output file")?;
 
         Ok(())
+    }
+
+    fn skip_wit_component(&self) -> bool {
+        self.component.skip_wit_component
+            // Skip componentization with `--shared` since that's creating a
+            // shared library that's not a component yet.
+            || self.shared
     }
 
     fn lld(&self) -> Command {
