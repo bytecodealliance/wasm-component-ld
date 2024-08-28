@@ -50,6 +50,11 @@ fn assert_component(bytes: &[u8]) {
     wasmparser::Validator::new().validate_all(&bytes).unwrap();
 }
 
+fn assert_module(bytes: &[u8]) {
+    assert!(wasmparser::Parser::is_core_wasm(&bytes));
+    wasmparser::Validator::new().validate_all(&bytes).unwrap();
+}
+
 #[test]
 fn empty() {
     let output = compile(&["--crate-type", "cdylib"], "");
@@ -176,4 +181,16 @@ world root {
         )],
     );
     assert_component(&output);
+}
+
+#[test]
+fn skip_component() {
+    let output = compile(
+        &["-Clink-arg=--skip-wit-component"],
+        r#"
+fn main() {
+}
+        "#,
+    );
+    assert_module(&output);
 }
