@@ -250,7 +250,7 @@ struct ComponentLdArgs {
 
     /// Where to place the component output.
     #[clap(short, long)]
-    output: Option<PathBuf>,
+    output: PathBuf,
 
     /// Print verbose output.
     #[clap(long)]
@@ -522,17 +522,29 @@ impl App {
         let mut cmd = self.lld();
         let linker = cmd.get_program().to_owned();
 
-        let lld_output =
-            tempfile::NamedTempFile::new().context("failed to create temp output file")?;
+        // If a temporary output is needed make sure it has the same file name
+        // as the output of our command itself since LLD will embed this file
+        // name in the name section of the output.
+        let temp_dir = match self.component.output.parent() {
+            Some(parent) => tempfile::TempDir::new_in(parent)?,
+            None => tempfile::TempDir::new()?,
+        };
+        let temp_output = match self.component.output.file_name() {
+            Some(name) => temp_dir.path().join(name),
+            None => bail!(
+                "output of {:?} does not have a file name",
+                self.component.output
+            ),
+        };
 
         // Shared libraries don't get wit-component run below so place the
         // output directly at the desired output location. Otherwise output to a
         // temporary location for wit-component to read and then the real output
         // is created after wit-component runs.
         if self.skip_wit_component() {
-            cmd.arg("-o").arg(self.component.output.as_ref().unwrap());
+            cmd.arg("-o").arg(&self.component.output);
         } else {
-            cmd.arg("-o").arg(lld_output.path());
+            cmd.arg("-o").arg(&temp_output);
         }
 
         if self.component.verbose {
@@ -555,8 +567,8 @@ impl App {
             wasi_preview1_component_adapter_provider::WASI_SNAPSHOT_PREVIEW1_COMMAND_ADAPTER;
         let proxy_adapter =
             wasi_preview1_component_adapter_provider::WASI_SNAPSHOT_PREVIEW1_PROXY_ADAPTER;
-        let mut core_module = std::fs::read(lld_output.path())
-            .with_context(|| format!("failed to read {linker:?} output"))?;
+        let mut core_module = std::fs::read(&temp_output)
+            .with_context(|| format!("failed to read {linker:?} output: {temp_output:?}"))?;
 
         // Inspect the output module to see if it's a command or reactor.
         let mut exports_start = false;
@@ -636,8 +648,10 @@ impl App {
 
         let component = encoder.encode().context("failed to encode component")?;
 
-        std::fs::write(self.component.output.as_ref().unwrap(), &component)
-            .context("failed to write output file")?;
+        std::fs::write(&self.component.output, &component).context(format!(
+            "failed to write output file: {:?}",
+            self.component.output
+        ))?;
 
         Ok(())
     }
