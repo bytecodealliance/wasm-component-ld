@@ -262,6 +262,13 @@ struct ComponentLdArgs {
     #[clap(long)]
     validate_component: Option<bool>,
 
+    /// Whether or not imports are deduplicated based on semver in the final
+    /// component.
+    ///
+    /// This defaults to `true`.
+    #[clap(long)]
+    merge_imports_based_on_semver: Option<bool>,
+
     /// Adapters to use when creating the final component.
     #[clap(long = "adapt", value_name = "[NAME=]MODULE", value_parser = parse_adapter)]
     adapters: Vec<(String, Vec<u8>)>,
@@ -618,10 +625,16 @@ impl App {
             )?;
         }
 
-        let mut encoder = wit_component::ComponentEncoder::default()
+        let mut encoder = wit_component::ComponentEncoder::default();
+        if let Some(validate) = self.component.validate_component {
+            encoder = encoder.validate(validate);
+        }
+        if let Some(merge) = self.component.merge_imports_based_on_semver {
+            encoder = encoder.merge_imports_based_on_semver(merge);
+        }
+        encoder = encoder
             .module(&core_module)
-            .context("failed to parse core wasm for componentization")?
-            .validate(self.component.validate_component.unwrap_or(true));
+            .context("failed to parse core wasm for componentization")?;
         let adapter = self.component.wasi_adapter.unwrap_or(if exports_start {
             WasiAdapter::Command
         } else {
