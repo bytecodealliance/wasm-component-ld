@@ -33,3 +33,6 @@ wat = "1.219.0"
 wit-component = "0.219.0"
 wit-parser = "0.219.0"
 wasi-preview1-component-adapter-provider = "24.0.0"
+
+[target.'cfg(windows)'.dependencies]
+winsplit = "0.1"

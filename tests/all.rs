@@ -221,6 +221,9 @@ fn rustc_using_argfile() {
         );
     }
     src.push_str("fn main() {}");
-    let output = p.compile(&["-Ccodegen-units=1000"], &src);
-    assert_component(&output);
+
+    p.file("args", "@args2");
+    p.file("args2", "--skip-wit-component");
+    let output = p.compile(&["-Ccodegen-units=1000", "-Clink-arg=@args"], &src);
+    assert_module(&output);
 }

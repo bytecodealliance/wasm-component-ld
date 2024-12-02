@@ -10,6 +10,8 @@ use wasmparser::Payload;
 use wit_component::StringEncoding;
 use wit_parser::{Resolve, WorldId};
 
+mod argfile;
+
 /// Representation of a flag passed to `wasm-ld`
 ///
 /// Note that the parsing of flags in `wasm-ld` is not as uniform as parsing
@@ -391,7 +393,7 @@ impl App {
     /// in fact `lexopt` is used to filter out `wasm-ld` arguments and `clap`
     /// only parses arguments specific to `wasm-component-ld`.
     fn parse() -> Result<App> {
-        let mut args = env::args_os().collect::<Vec<_>>();
+        let mut args = argfile::expand().context("failed to expand @-response files")?;
 
         // First remove `-flavor wasm` in case this is invoked as a generic LLD
         // driver. We can safely ignore that going forward.

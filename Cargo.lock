@@ -415,6 +415,7 @@ dependencies = [
  "wasi-preview1-component-adapter-provider",
  "wasmparser",
  "wat",
+ "winsplit",
  "wit-component",
  "wit-parser",
 ]
@@ -562,6 +563,12 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
+
+[[package]]
+name = "winsplit"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ab703352da6a72f35c39a533526393725640575bb211f61987a2748323ad956"
 
 [[package]]
 name = "wit-component"
