@@ -131,6 +131,6 @@ use windows as imp;
 #[cfg(windows)]
 mod windows {
     pub fn split(s: &str) -> impl Iterator<Item = String> {
-        winsplit::split(s).map(|s| s.to_string())
+        winsplit::split(s).into_iter()
     }
 }
