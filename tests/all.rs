@@ -4,45 +4,54 @@ use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 
 fn compile(args: &[&str], src: &str) -> Vec<u8> {
-    compile_with_files(args, src, &[])
+    Project::new().compile(args, src)
 }
 
-fn compile_with_files(args: &[&str], src: &str, files: &[(&str, &str)]) -> Vec<u8> {
-    let tempdir = tempfile::TempDir::new().unwrap();
+struct Project {
+    tempdir: tempfile::TempDir,
+}
 
-    for (name, content) in files {
-        fs::write(tempdir.path().join(name), content.as_bytes()).unwrap();
+impl Project {
+    fn new() -> Project {
+        Project {
+            tempdir: tempfile::TempDir::new().unwrap(),
+        }
+    }
+    fn file(&self, name: &str, contents: &str) {
+        fs::write(self.tempdir.path().join(name), contents.as_bytes()).unwrap();
     }
 
-    let mut myself = env::current_exe().unwrap();
-    myself.pop(); // exe name
-    myself.pop(); // 'deps'
-    myself.push("wasm-component-ld");
-    let mut rustc = Command::new("rustc")
-        .arg("--target")
-        .arg("wasm32-wasip1")
-        .arg("-")
-        .arg("-o")
-        .arg("-")
-        .arg("-C")
-        .arg(&format!("linker={}", myself.to_str().unwrap()))
-        .args(args)
-        .current_dir(tempdir.path())
-        .stdout(Stdio::piped())
-        .stdin(Stdio::piped())
-        .spawn()
-        .expect("failed to spawn rustc");
+    fn compile(&self, args: &[&str], src: &str) -> Vec<u8> {
+        let mut myself = env::current_exe().unwrap();
+        myself.pop(); // exe name
+        myself.pop(); // 'deps'
+        myself.push("wasm-component-ld");
+        let mut rustc = Command::new("rustc")
+            .arg("--target")
+            .arg("wasm32-wasip1")
+            .arg("-")
+            .arg("-o")
+            .arg("-")
+            .arg("-C")
+            .arg(&format!("linker={}", myself.to_str().unwrap()))
+            .args(args)
+            .current_dir(self.tempdir.path())
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            .spawn()
+            .expect("failed to spawn rustc");
 
-    rustc
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(src.as_bytes())
-        .unwrap();
-    let mut ret = Vec::new();
-    rustc.stdout.take().unwrap().read_to_end(&mut ret).unwrap();
-    assert!(rustc.wait().unwrap().success());
-    ret
+        rustc
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(src.as_bytes())
+            .unwrap();
+        let mut ret = Vec::new();
+        rustc.stdout.take().unwrap().read_to_end(&mut ret).unwrap();
+        assert!(rustc.wait().unwrap().success());
+        ret
+    }
 }
 
 fn assert_component(bytes: &[u8]) {
@@ -135,7 +144,23 @@ fn main() {
 
 #[test]
 fn component_type_wit_file() {
-    let output = compile_with_files(
+    let project = Project::new();
+    project.file(
+        "foo.wit",
+        r#"
+package foo:bar;
+
+interface foo {
+  bar: func(s: string) -> string;
+}
+
+world root {
+  import foo;
+  export foo;
+}
+"#,
+    );
+    let output = project.compile(
         &[
             "-Clink-arg=--component-type",
             "-Clink-arg=foo.wit",
@@ -164,21 +189,6 @@ pub unsafe extern "C" fn export(ptr: *mut u8, len: i32) -> *mut u8 {
     result
 }
 "#,
-        &[(
-            "foo.wit",
-            r#"
-package foo:bar;
-
-interface foo {
-  bar: func(s: string) -> string;
-}
-
-world root {
-  import foo;
-  export foo;
-}
-"#,
-        )],
     );
     assert_component(&output);
 }
@@ -193,4 +203,24 @@ fn main() {
         "#,
     );
     assert_module(&output);
+}
+
+#[test]
+fn rustc_using_argfile() {
+    let prefix = (0..200).map(|_| 'a').collect::<String>();
+    let p = Project {
+        tempdir: tempfile::TempDir::with_prefix(&prefix).unwrap(),
+    };
+
+    let mut src = String::new();
+    for i in 0..1000 {
+        src.push_str(&format!("mod m{i};\n"));
+        p.file(
+            &format!("m{i}.rs"),
+            &format!("#[no_mangle] pub extern \"C\" fn f{i}() {{}}"),
+        );
+    }
+    src.push_str("fn main() {}");
+    let output = p.compile(&["-Ccodegen-units=1000"], &src);
+    assert_component(&output);
 }
