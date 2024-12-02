@@ -4,11 +4,13 @@ use lexopt::Arg;
 use std::env;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, ExitStatus};
 use std::str::FromStr;
 use wasmparser::Payload;
 use wit_component::StringEncoding;
 use wit_parser::{Resolve, WorldId};
+
+mod argfile;
 
 /// Representation of a flag passed to `wasm-ld`
 ///
@@ -391,7 +393,7 @@ impl App {
     /// in fact `lexopt` is used to filter out `wasm-ld` arguments and `clap`
     /// only parses arguments specific to `wasm-component-ld`.
     fn parse() -> Result<App> {
-        let mut args = env::args_os().collect::<Vec<_>>();
+        let mut args = argfile::expand().context("failed to expand @-response files")?;
 
         // First remove `-flavor wasm` in case this is invoked as a generic LLD
         // driver. We can safely ignore that going forward.
@@ -526,8 +528,7 @@ impl App {
     }
 
     fn run(&mut self) -> Result<()> {
-        let mut cmd = self.lld();
-        let linker = cmd.get_program().to_owned();
+        let mut lld = self.lld();
 
         // If a temporary output is needed make sure it has the same file name
         // as the output of our command itself since LLD will embed this file
@@ -549,16 +550,14 @@ impl App {
         // temporary location for wit-component to read and then the real output
         // is created after wit-component runs.
         if self.skip_wit_component() {
-            cmd.arg("-o").arg(&self.component.output);
+            lld.output(&self.component.output);
         } else {
-            cmd.arg("-o").arg(&temp_output);
+            lld.output(&temp_output);
         }
 
-        if self.component.verbose {
-            eprintln!("running LLD: {cmd:?}");
-        }
-        let status = cmd
-            .status()
+        let linker = &lld.exe;
+        let status = lld
+            .status(&temp_dir, &self.lld_args)
             .with_context(|| format!("failed to spawn {linker:?}"))?;
         if !status.success() {
             bail!("failed to invoke LLD: {status}");
@@ -676,18 +675,17 @@ impl App {
             || self.shared
     }
 
-    fn lld(&self) -> Command {
+    fn lld(&self) -> Lld {
         let mut lld = self.find_lld();
-        lld.args(&self.lld_args);
         if self.component.verbose {
-            lld.arg("--verbose");
+            lld.verbose = true
         }
         lld
     }
 
-    fn find_lld(&self) -> Command {
+    fn find_lld(&self) -> Lld {
         if let Some(path) = &self.component.wasm_ld_path {
-            return Command::new(path);
+            return Lld::new(path);
         }
 
         // Search for the first of `wasm-ld` or `rust-lld` in `$PATH`
@@ -695,19 +693,129 @@ impl App {
         let rust_lld = format!("rust-lld{}", env::consts::EXE_SUFFIX);
         for entry in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
             if entry.join(&wasm_ld).is_file() {
-                return Command::new(wasm_ld);
+                return Lld::new(wasm_ld);
             }
             if entry.join(&rust_lld).is_file() {
-                let mut ret = Command::new(rust_lld);
-                ret.arg("-flavor").arg("wasm");
-                return ret;
+                let mut lld = Lld::new(rust_lld);
+                lld.needs_flavor = true;
+                return lld;
             }
         }
 
         // Fall back to `wasm-ld` if the search failed to get an error message
         // that indicates that `wasm-ld` was attempted to be found but couldn't
         // be found.
-        Command::new("wasm-ld")
+        Lld::new("wasm-ld")
+    }
+}
+
+/// Helper structure representing an `lld` invocation.
+struct Lld {
+    exe: PathBuf,
+    needs_flavor: bool,
+    verbose: bool,
+    output: Option<PathBuf>,
+}
+
+impl Lld {
+    fn new(exe: impl Into<PathBuf>) -> Lld {
+        Lld {
+            exe: exe.into(),
+            needs_flavor: false,
+            verbose: false,
+            output: None,
+        }
+    }
+
+    fn output(&mut self, dst: impl Into<PathBuf>) {
+        self.output = Some(dst.into());
+    }
+
+    fn status(&self, tmpdir: &tempfile::TempDir, args: &[OsString]) -> Result<ExitStatus> {
+        // If we can probably pass `args` natively, try to do so. In some cases
+        // though just skip this entirely and go straight to below.
+        if !self.probably_too_big(args) {
+            match self.run(args) {
+                // If this subprocess failed to spawn because the arguments
+                // were too large, fall through to below.
+                Err(ref e) if self.command_line_too_big(e) => {
+                    if self.verbose {
+                        eprintln!("command line was too large, trying again...");
+                    }
+                }
+                other => return Ok(other?),
+            }
+        } else if self.verbose {
+            eprintln!("arguments probably too large {args:?}");
+        }
+
+        // The `args` are too big to be passed via the command line itself so
+        // encode the mall using "posix quoting" into an "argfile". This gets
+        // passed as `@foo` to lld and we also pass `--rsp-quoting=posix` to
+        // ensure that LLD always uses posix quoting. That means that we don't
+        // have to implement the dual nature of both posix and windows encoding
+        // here.
+        let mut argfile = Vec::new();
+        for arg in args {
+            for byte in arg.as_encoded_bytes() {
+                if *byte == b'\\' || *byte == b' ' {
+                    argfile.push(b'\\');
+                }
+                argfile.push(*byte);
+            }
+            argfile.push(b'\n');
+        }
+        let path = tmpdir.path().join("argfile_tmp");
+        std::fs::write(&path, &argfile).with_context(|| format!("failed to write {path:?}"))?;
+        let mut argfile_arg = OsString::from("@");
+        argfile_arg.push(&path);
+        let status = self.run(&["--rsp-quoting=posix".into(), argfile_arg.into()])?;
+        Ok(status)
+    }
+
+    /// Tests whether the `args` array is too large to execute natively.
+    ///
+    /// Windows `cmd.exe` has a very small limit of around 8k so perform a
+    /// guess up to 6k. This isn't 100% accurate.
+    fn probably_too_big(&self, args: &[OsString]) -> bool {
+        let args_size = args
+            .iter()
+            .map(|s| s.as_encoded_bytes().len())
+            .sum::<usize>();
+        cfg!(windows) && args_size > 6 * 1024
+    }
+
+    /// Test if the OS failed to spawn a process because the arguments were too
+    /// long.
+    fn command_line_too_big(&self, err: &std::io::Error) -> bool {
+        #[cfg(unix)]
+        return err.raw_os_error() == Some(libc::E2BIG);
+        #[cfg(windows)]
+        return err.raw_os_error()
+            == Some(windows_sys::Win32::Foundation::ERROR_FILENAME_EXCED_RANGE as i32);
+        #[cfg(not(any(unix, windows)))]
+        {
+            let _ = err;
+            return false;
+        }
+    }
+
+    fn run(&self, args: &[OsString]) -> std::io::Result<ExitStatus> {
+        let mut cmd = Command::new(&self.exe);
+        if self.needs_flavor {
+            cmd.arg("-flavor").arg("wasm");
+        }
+        cmd.args(args);
+        if self.verbose {
+            cmd.arg("--verbose");
+        }
+        if let Some(output) = &self.output {
+            cmd.arg("-o").arg(output);
+        }
+        if self.verbose {
+            eprintln!("running {cmd:?}");
+        }
+        cmd.status()
     }
 }
 
