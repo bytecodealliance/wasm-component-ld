@@ -34,5 +34,9 @@ wit-component = "0.219.0"
 wit-parser = "0.219.0"
 wasi-preview1-component-adapter-provider = "24.0.0"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1"
+windows-sys = { version = "0.59", features = ['Win32_Foundation'] }
