@@ -32,7 +32,7 @@ wasmparser = "0.223.0"
 wat = "1.223.0"
 wit-component = "0.223.0"
 wit-parser = "0.223.0"
-wasi-preview1-component-adapter-provider = "29.0.0"
+wasi-preview1-component-adapter-provider = "29.0.1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
