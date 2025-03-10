@@ -47,7 +47,7 @@ jobs:
       if: matrix.target != ''
     - run: $CENTOS cargo build --release
     - run: ./ci/build-tarballs.sh "${{ matrix.build }}" "${{ matrix.target }}"
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: bins-${{ matrix.build }}
         path: dist

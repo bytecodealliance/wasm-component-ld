@@ -275,6 +275,27 @@ struct ComponentLdArgs {
     #[clap(long = "adapt", value_name = "[NAME=]MODULE", value_parser = parse_adapter)]
     adapters: Vec<(String, Vec<u8>)>,
 
+    /// Whether or not "legacy" names are rejected during componentization.
+    ///
+    /// This option can be used to require the naming scheme outlined in
+    /// <https://github.com/WebAssembly/component-model/pull/378> to be used
+    /// and rejects all modules using the previous ad-hoc naming scheme.
+    ///
+    /// This defaults to `false`.
+    #[clap(long)]
+    reject_legacy_names: bool,
+
+    /// Whether or not the `cabi_realloc` function used by the adapter is backed
+    /// by `memory.grow`.
+    ///
+    /// By default the adapter will import `cabi_realloc` from the main module
+    /// and use that, but this can be used to instead back memory allocation
+    /// requests with `memory.grow` instead.
+    ///
+    /// This defaults to `false`.
+    #[clap(long)]
+    realloc_via_memory_grow: bool,
+
     /// WIT file representing additional component type information to use.
     ///
     /// May be specified more than once.
@@ -624,7 +645,9 @@ impl App {
             )?;
         }
 
-        let mut encoder = wit_component::ComponentEncoder::default();
+        let mut encoder = wit_component::ComponentEncoder::default()
+            .reject_legacy_names(self.component.reject_legacy_names)
+            .realloc_via_memory_grow(self.component.realloc_via_memory_grow);
         if let Some(validate) = self.component.validate_component {
             encoder = encoder.validate(validate);
         }

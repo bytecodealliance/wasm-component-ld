@@ -1,6 +1,7 @@
+use anyhow::{bail, Context, Result};
 use std::env;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::process::{Command, Stdio};
 
 fn compile(args: &[&str], src: &str) -> Vec<u8> {
@@ -22,11 +23,16 @@ impl Project {
     }
 
     fn compile(&self, args: &[&str], src: &str) -> Vec<u8> {
+        self.try_compile(args, src, true).unwrap()
+    }
+
+    fn try_compile(&self, args: &[&str], src: &str, inherit_stderr: bool) -> Result<Vec<u8>> {
         let mut myself = env::current_exe().unwrap();
         myself.pop(); // exe name
         myself.pop(); // 'deps'
         myself.push("wasm-component-ld");
-        let mut rustc = Command::new("rustc")
+        let mut rustc = Command::new("rustc");
+        rustc
             .arg("--target")
             .arg("wasm32-wasip1")
             .arg("-")
@@ -35,22 +41,40 @@ impl Project {
             .arg("-C")
             .arg(&format!("linker={}", myself.to_str().unwrap()))
             .args(args)
-            .current_dir(self.tempdir.path())
-            .stdout(Stdio::piped())
             .stdin(Stdio::piped())
-            .spawn()
-            .expect("failed to spawn rustc");
+            .stdout(Stdio::piped())
+            .current_dir(self.tempdir.path());
+        if !inherit_stderr {
+            rustc.stderr(Stdio::piped());
+        }
+        let mut rustc = rustc.spawn().context("failed to spawn rustc")?;
 
         rustc
             .stdin
             .take()
-            .unwrap()
+            .context("stdin should be present")?
             .write_all(src.as_bytes())
-            .unwrap();
-        let mut ret = Vec::new();
-        rustc.stdout.take().unwrap().read_to_end(&mut ret).unwrap();
-        assert!(rustc.wait().unwrap().success());
-        ret
+            .context("failed to write stdin")?;
+        let output = rustc
+            .wait_with_output()
+            .context("failed to wait for subprocess")?;
+        if !output.status.success() {
+            let mut error = format!("subprocess failed: {:?}", output.status);
+            if !output.stdout.is_empty() {
+                error.push_str(&format!(
+                    "\nstdout: {}",
+                    String::from_utf8_lossy(&output.stdout)
+                ));
+            }
+            if !output.stderr.is_empty() {
+                error.push_str(&format!(
+                    "\nstderr: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+            bail!("{error}")
+        }
+        Ok(output.stdout)
     }
 }
 
@@ -226,4 +250,36 @@ fn rustc_using_argfile() {
     p.file("args2", "--skip-wit-component");
     let output = p.compile(&["-Ccodegen-units=1000", "-Clink-arg=@args"], &src);
     assert_module(&output);
+}
+
+#[test]
+fn hello_world_with_realloc_as_memory_grow() {
+    let output = compile(
+        &["-Clink-arg=--realloc-via-memory-grow"],
+        r#"
+fn main() {
+    println!("hello!");
+}
+"#,
+    );
+    assert_component(&output);
+}
+
+// The adapter uses legacy names, so this option will always result in an error
+// right now.
+#[test]
+fn legacy_names_currently_required() {
+    let result = Project::new().try_compile(
+        &["-Clink-arg=--reject-legacy-names"],
+        r#"
+fn main() {
+    println!("hello!");
+}
+"#,
+        false,
+    );
+    let err = result.unwrap_err();
+    let err = format!("{err:?}");
+    println!("error: {err}");
+    assert!(err.contains("unknown or invalid component model import syntax"));
 }
