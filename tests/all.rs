@@ -26,7 +26,7 @@ impl Project {
         self.try_compile(args, src, true).unwrap()
     }
 
-    fn try_compile(&self, args: &[&str], src: &str, inherit_stdio: bool) -> Result<Vec<u8>> {
+    fn try_compile(&self, args: &[&str], src: &str, inherit_stderr: bool) -> Result<Vec<u8>> {
         let mut myself = env::current_exe().unwrap();
         myself.pop(); // exe name
         myself.pop(); // 'deps'
@@ -42,9 +42,10 @@ impl Project {
             .arg(&format!("linker={}", myself.to_str().unwrap()))
             .args(args)
             .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
             .current_dir(self.tempdir.path());
-        if !inherit_stdio {
-            rustc.stdout(Stdio::piped()).stderr(Stdio::piped());
+        if !inherit_stderr {
+            rustc.stderr(Stdio::piped());
         }
         let mut rustc = rustc.spawn().context("failed to spawn rustc")?;
 
