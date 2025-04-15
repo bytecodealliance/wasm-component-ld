@@ -255,7 +255,7 @@ struct ComponentLdArgs {
     output: PathBuf,
 
     /// Print verbose output.
-    #[clap(long)]
+    #[clap(short, long)]
     verbose: bool,
 
     /// Whether or not the output component is validated.
