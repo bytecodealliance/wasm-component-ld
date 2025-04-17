@@ -28,11 +28,11 @@ anyhow = "1.0.80"
 clap = { version = "4.5.4", features = ['derive'] }
 lexopt = "0.3.0"
 tempfile = "3.10.0"
-wasmparser = "0.228.0"
-wat = "1.228.0"
-wit-component = "0.228.0"
-wit-parser = "0.228.0"
-wasi-preview1-component-adapter-provider = "30.0.2"
+wasmparser = "0.229.0"
+wat = "1.229.0"
+wit-component = "0.229.0"
+wit-parser = "0.229.0"
+wasi-preview1-component-adapter-provider = "31.0.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
