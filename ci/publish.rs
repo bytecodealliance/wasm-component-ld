@@ -345,7 +345,7 @@ fn curl(url: &str) -> Option<String> {
     let output = cmd_output(
         Command::new("curl")
             .arg("--user-agent")
-            .arg("bytecodealliance/wasmtime auto-publish script")
+            .arg("bytecodealliance/wasm-component-ld auto-publish script")
             .arg(url),
     );
     if !output.status.success() {
