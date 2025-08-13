@@ -322,6 +322,11 @@ struct ComponentLdArgs {
     /// Skip the `wit-component`-based process to generate a component.
     #[clap(long)]
     skip_wit_component: bool,
+
+    /// Raw flags to pass to the end of the `lld` invocation in case they're
+    /// not already recognized by this wrapper executable.
+    #[clap(long)]
+    append_lld_flag: Vec<OsString>,
 }
 
 fn parse_adapter(s: &str) -> Result<(String, Vec<u8>)> {
@@ -527,16 +532,18 @@ impl App {
                         handle_lld_arg(lld, &mut parser, &mut lld_args)?;
                     }
                     None => {
-                        component_ld_args.push(format!("--{c}").into());
+                        let mut flag = OsString::from(format!("--{c}"));
                         if let Some(arg) = command.get_arguments().find(|a| a.get_long() == Some(c))
                         {
                             match arg.get_action() {
                                 ArgAction::Set | ArgAction::Append => {
-                                    component_ld_args.push(parser.value()?)
+                                    flag.push("=");
+                                    flag.push(parser.value()?);
                                 }
                                 _ => (),
                             }
                         }
+                        component_ld_args.push(flag);
                     }
                 },
                 None => break,
@@ -585,8 +592,13 @@ impl App {
         }
 
         let linker = &lld.exe;
+        let lld_flags = self
+            .lld_args
+            .iter()
+            .chain(&self.component.append_lld_flag)
+            .collect::<Vec<_>>();
         let status = lld
-            .status(&temp_dir, &self.lld_args)
+            .status(&temp_dir, &lld_flags)
             .with_context(|| format!("failed to spawn {linker:?}"))?;
         if !status.success() {
             bail!("failed to invoke LLD: {status}");
@@ -762,7 +774,7 @@ impl Lld {
         self.output = Some(dst.into());
     }
 
-    fn status(&self, tmpdir: &tempfile::TempDir, args: &[OsString]) -> Result<ExitStatus> {
+    fn status(&self, tmpdir: &tempfile::TempDir, args: &[&OsString]) -> Result<ExitStatus> {
         // If we can probably pass `args` natively, try to do so. In some cases
         // though just skip this entirely and go straight to below.
         if !self.probably_too_big(args) {
@@ -800,7 +812,7 @@ impl Lld {
         std::fs::write(&path, &argfile).with_context(|| format!("failed to write {path:?}"))?;
         let mut argfile_arg = OsString::from("@");
         argfile_arg.push(&path);
-        let status = self.run(&["--rsp-quoting=posix".into(), argfile_arg.into()])?;
+        let status = self.run(&[&"--rsp-quoting=posix".into(), &argfile_arg])?;
         Ok(status)
     }
 
@@ -808,7 +820,7 @@ impl Lld {
     ///
     /// Windows `cmd.exe` has a very small limit of around 8k so perform a
     /// guess up to 6k. This isn't 100% accurate.
-    fn probably_too_big(&self, args: &[OsString]) -> bool {
+    fn probably_too_big(&self, args: &[&OsString]) -> bool {
         let args_size = args
             .iter()
             .map(|s| s.as_encoded_bytes().len())
@@ -831,7 +843,7 @@ impl Lld {
         }
     }
 
-    fn run(&self, args: &[OsString]) -> std::io::Result<ExitStatus> {
+    fn run(&self, args: &[&OsString]) -> std::io::Result<ExitStatus> {
         let mut cmd = Command::new(&self.exe);
         if self.needs_flavor {
             cmd.arg("-flavor").arg("wasm");
