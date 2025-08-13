@@ -157,6 +157,7 @@ fn linker_flags() {
             "-Clink-arg=--max-memory=65536",
             "-Clink-arg=-zstack-size=32",
             "-Clink-arg=--global-base=2048",
+            "-Clink-arg=--append-lld-flag=--no-merge-data-segments",
         ],
         r#"
 fn main() {
@@ -164,6 +165,23 @@ fn main() {
         "#,
     );
     assert_component(&output);
+}
+
+#[test]
+fn invalid_lld_flag() {
+    let result = Project::new().try_compile(
+        &["-Clink-arg=--append-lld-flag=--nonexistent-lld-flag"],
+        r#"
+fn main() {
+    println!("hello!");
+}
+"#,
+        false,
+    );
+    let err = result.unwrap_err();
+    let err = format!("{err:?}");
+    println!("error: {err}");
+    assert!(err.contains("error: unknown argument: --nonexistent-lld-flag"));
 }
 
 #[test]
