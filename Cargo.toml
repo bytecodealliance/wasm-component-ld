@@ -39,4 +39,4 @@ libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1"
-windows-sys = { version = "0.59", features = ['Win32_Foundation'] }
+windows-sys = { version = "0.60", features = ['Win32_Foundation'] }
