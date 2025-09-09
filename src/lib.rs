@@ -187,6 +187,7 @@ const LLD_FLAGS: &[LldFlag] = &[
     flag! { --no-merge-data-segments },
     flag! { --no-pie },
     flag! { --no-print-gc-sections },
+    flag! { --no-shlib-sigcheck },
     flag! { --no-whole-archive },
     flag! { --noinhibit-exec },
     flag! { --non_shared },
