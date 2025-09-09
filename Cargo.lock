@@ -407,7 +407,7 @@ checksum = "20689c88791776219f78c2529700d15e6a9bd57a27858c62e9ef8487956b571c"
 
 [[package]]
 name = "wasm-component-ld"
-version = "0.5.16"
+version = "0.5.17"
 dependencies = [
  "anyhow",
  "clap",
