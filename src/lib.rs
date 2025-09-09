@@ -643,7 +643,7 @@ impl App {
                     .push_path(wit_file)
                     .with_context(|| format!("unable to add component type {wit_file:?}"))?;
 
-                let world = resolve.select_world(package, None)?;
+                let world = resolve.select_world(&[package], None)?;
 
                 if let Some((merged_resolve, merged_world)) = &mut merged {
                     let world = merged_resolve.merge(resolve)?.map_world(world, None)?;
