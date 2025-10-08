@@ -28,15 +28,15 @@ anyhow = "1.0.80"
 clap = { version = "4.5.4", features = ['derive'] }
 lexopt = "0.3.0"
 tempfile = "3.10.0"
-wasmparser = "0.239.0"
-wat = "1.239.0"
-wit-component = "0.239.0"
-wit-parser = "0.239.0"
-wasi-preview1-component-adapter-provider = "36.0.0"
+wasmparser = "0.240.0"
+wat = "1.240.0"
+wit-component = "0.240.0"
+wit-parser = "0.240.0"
+wasi-preview1-component-adapter-provider = "37.0.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1"
-windows-sys = { version = "0.60", features = ['Win32_Foundation'] }
+windows-sys = { version = "0.61.2", features = ['Win32_Foundation'] }
