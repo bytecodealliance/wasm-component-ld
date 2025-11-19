@@ -26,6 +26,7 @@ pkg-fmt = "zip"
 [dependencies]
 anyhow = "1.0.80"
 clap = { version = "4.5.4", features = ['derive'] }
+clap_lex = "0.7.5"
 lexopt = "0.3.0"
 tempfile = "3.10.0"
 wasmparser = "0.241.0"
