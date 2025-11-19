@@ -437,6 +437,7 @@ version = "0.5.19"
 dependencies = [
  "anyhow",
  "clap",
+ "clap_lex",
  "lexopt",
  "libc",
  "tempfile",

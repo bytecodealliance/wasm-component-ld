@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
 use clap::{ArgAction, CommandFactory, FromArgMatches};
+use clap_lex::OsStrExt;
 use lexopt::Arg;
 use std::env;
 use std::ffi::OsString;
@@ -31,6 +32,16 @@ struct LldFlag {
     long: Option<&'static str>,
     short: Option<char>,
     value: FlagValue,
+    nonstandard: bool,
+}
+
+impl LldFlag {
+    const fn nonstandard(self) -> Self {
+        LldFlag {
+            nonstandard: true,
+            ..self
+        }
+    }
 }
 
 enum FlagValue {
@@ -71,6 +82,7 @@ macro_rules! flag {
             long: Some(flag!(@name [] $($flag)*)),
             short: flag!(@short $($short)?),
             value: flag!(@value $($flag)*),
+            nonstandard: false,
         }
     };
 
@@ -81,6 +93,7 @@ macro_rules! flag {
             long: None,
             short: Some(flag!(@char $flag)),
             value: flag!(@value $flag $($val)*),
+            nonstandard: false,
         }
     };
 
@@ -126,111 +139,108 @@ macro_rules! flag {
 }
 
 const LLD_FLAGS: &[LldFlag] = &[
-    flag! { --allow-multiple-definition },
-    flag! { --allow-undefined-file=PATH },
-    flag! { --allow-undefined },
-    flag! { --Bdynamic },
-    flag! { --Bstatic },
-    flag! { --Bsymbolic },
-    flag! { --build-id[=VAL] },
-    flag! { --call_shared },
+    flag! { --allow-multiple-definition }.nonstandard(),
+    flag! { --allow-undefined-file=PATH }.nonstandard(),
+    flag! { --allow-undefined }.nonstandard(),
+    flag! { --Bdynamic }.nonstandard(),
+    flag! { --Bstatic }.nonstandard(),
+    flag! { --Bsymbolic }.nonstandard(),
+    flag! { --build-id[=VAL] }.nonstandard(),
+    flag! { --call_shared }.nonstandard(),
     flag! { --check-features },
-    flag! { --color-diagnostics[=VALUE] },
-    flag! { --compress-relocations },
-    flag! { --demangle },
-    flag! { --dn },
-    flag! { --dy },
-    flag! { --emit-relocs },
-    flag! { --end-lib },
-    flag! { --entry SYM },
+    flag! { --color-diagnostics[=VALUE] }.nonstandard(),
+    flag! { --compress-relocations }.nonstandard(),
+    flag! { --demangle }.nonstandard(),
+    flag! { --dn }.nonstandard(),
+    flag! { --dy }.nonstandard(),
+    flag! { --emit-relocs }.nonstandard(),
+    flag! { --end-lib }.nonstandard(),
+    flag! { --entry SYM }.nonstandard(),
     flag! { --error-limit=N },
-    flag! { --error-unresolved-symbols },
+    flag! { --error-unresolved-symbols }.nonstandard(),
     flag! { --experimental-pic },
     flag! { --export-all },
-    flag! { -E / --export-dynamic },
-    flag! { --export-if-defined=SYM },
+    flag! { -E / --export-dynamic }.nonstandard(),
+    flag! { --export-if-defined=SYM }.nonstandard(),
     flag! { --export-memory[=NAME] },
     flag! { --export-table },
-    flag! { --export=SYM },
-    flag! { --extra-features=LIST },
-    flag! { --fatal-warnings },
-    flag! { --features=LIST },
-    flag! { --gc-sections },
+    flag! { --export=SYM }.nonstandard(),
+    flag! { --extra-features=LIST }.nonstandard(),
+    flag! { --fatal-warnings }.nonstandard(),
+    flag! { --features=LIST }.nonstandard(),
+    flag! { --gc-sections }.nonstandard(),
     flag! { --global-base=VALUE },
     flag! { --growable-table },
     flag! { --import-memory[=NAME] },
     flag! { --import-table },
-    flag! { --import-undefined },
+    flag! { --import-undefined }.nonstandard(),
     flag! { --initial-heap=SIZE },
     flag! { --initial-memory=SIZE },
-    flag! { --keep-section=NAME },
+    flag! { --keep-section=NAME }.nonstandard(),
     flag! { --lto-CGO=LEVEL },
     flag! { --lto-debug-pass-manager },
     flag! { --lto-O=LEVEL },
     flag! { --lto-partitions=NUM },
     flag! { -L PATH },
     flag! { -l LIB },
-    flag! { --Map=FILE },
+    flag! { --Map=FILE }.nonstandard(),
     flag! { --max-memory=SIZE },
     flag! { --merge-data-segments },
-    flag! { --mllvm=FLAG },
+    flag! { --mllvm=FLAG }.nonstandard(),
     flag! { -m ARCH },
-    flag! { --no-allow-multiple-definition },
+    flag! { --no-allow-multiple-definition }.nonstandard(),
     flag! { --no-check-features },
-    flag! { --no-color-diagnostics },
-    flag! { --no-demangle },
-    flag! { --no-entry },
-    flag! { --no-export-dynamic },
-    flag! { --no-fatal-warnings },
-    flag! { --no-gc-sections },
+    flag! { --no-color-diagnostics }.nonstandard(),
+    flag! { --no-demangle }.nonstandard(),
+    flag! { --no-entry }.nonstandard(),
+    flag! { --no-export-dynamic }.nonstandard(),
+    flag! { --no-fatal-warnings }.nonstandard(),
+    flag! { --no-gc-sections }.nonstandard(),
     flag! { --no-growable-memory },
     flag! { --no-merge-data-segments },
-    flag! { --no-pie },
-    flag! { --no-print-gc-sections },
+    flag! { --no-pie }.nonstandard(),
+    flag! { --no-print-gc-sections }.nonstandard(),
     flag! { --no-shlib-sigcheck },
-    flag! { --no-whole-archive },
-    flag! { --noinhibit-exec },
-    flag! { --non_shared },
+    flag! { --no-whole-archive }.nonstandard(),
+    flag! { --noinhibit-exec }.nonstandard(),
+    flag! { --non_shared }.nonstandard(),
     flag! { -O LEVEL },
     flag! { --page-size=VALUE },
-    flag! { --pie },
-    flag! { --print-gc-sections },
-    flag! { -M / --print-map },
-    flag! { --relocatable },
+    flag! { --pie }.nonstandard(),
+    flag! { --print-gc-sections }.nonstandard(),
+    flag! { -M / --print-map }.nonstandard(),
+    flag! { --relocatable }.nonstandard(),
     flag! { --reproduce=VALUE },
-    flag! { --rpath=VALUE },
-    flag! { --save-temps },
+    flag! { --rpath=VALUE }.nonstandard(),
+    flag! { --save-temps }.nonstandard(),
     flag! { --shared-memory },
-    flag! { --shared },
-    flag! { --soname=VALUE },
-    flag! { --stack-first },
-    flag! { --start-lib },
-    flag! { --static },
-    flag! { -s / --strip-all },
-    flag! { -S / --strip-debug },
+    flag! { --shared }.nonstandard(),
+    flag! { --soname=VALUE }.nonstandard(),
+    flag! { --stack-first }.nonstandard(),
+    flag! { --start-lib }.nonstandard(),
+    flag! { --static }.nonstandard(),
+    flag! { -s / --strip-all }.nonstandard(),
+    flag! { -S / --strip-debug }.nonstandard(),
     flag! { --table-base=VALUE },
     flag! { --thinlto-cache-dir=PATH },
     flag! { --thinlto-cache-policy=VALUE },
     flag! { --thinlto-jobs=N },
-    flag! { --threads=N },
-    flag! { -y / --trace-symbol=SYM },
-    flag! { -t / --trace },
-    flag! { --undefined=SYM },
-    flag! { --unresolved-symbols=VALUE },
-    flag! { --warn-unresolved-symbols },
-    flag! { --whole-archive },
+    flag! { --threads=N }.nonstandard(),
+    flag! { -y / --trace-symbol=SYM }.nonstandard(),
+    flag! { -t / --trace }.nonstandard(),
+    flag! { --undefined=SYM }.nonstandard(),
+    flag! { --unresolved-symbols=VALUE }.nonstandard(),
+    flag! { --warn-unresolved-symbols }.nonstandard(),
+    flag! { --whole-archive }.nonstandard(),
     flag! { --why-extract=MEMBER },
-    flag! { --wrap=VALUE },
+    flag! { --wrap=VALUE }.nonstandard(),
     flag! { -z OPT },
 ];
-
-const LLD_LONG_FLAGS_NONSTANDARD: &[&str] = &["-shared"];
 
 #[derive(Default)]
 struct App {
     component: ComponentLdArgs,
     lld_args: Vec<OsString>,
-    shared: bool,
 }
 
 /// A linker to create a Component from input object files and libraries.
@@ -442,7 +452,6 @@ impl App {
         let mut command = ComponentLdArgs::command();
         let mut lld_args = Vec::new();
         let mut component_ld_args = vec![std::env::args_os().nth(0).unwrap()];
-        let mut shared = false;
         let mut parser = lexopt::Parser::from_iter(args);
 
         fn handle_lld_arg(
@@ -497,14 +506,31 @@ impl App {
         loop {
             if let Some(mut args) = parser.try_raw_args() {
                 if let Some(arg) = args.peek() {
-                    let for_lld = LLD_LONG_FLAGS_NONSTANDARD.iter().any(|s| arg == *s);
-                    if for_lld {
-                        lld_args.push(arg.to_owned());
-                        if arg == "-shared" {
-                            shared = true;
+                    // If this is a `-...` flag then check to see if this is a
+                    // "nonstandard" flag like `-shared`. That's done by
+                    // looking at all `nonstandard` flags and testing if the
+                    // option is `-name...`. If so, then assume it's a nonstandard
+                    // flag and give it to LLD then move on.
+                    //
+                    // Note that if any flag has a value it'll get passed to
+                    // LLD below in `Arg::Value`, and otherwise if the option
+                    // has an embedded `=` in it that'll be handled here via
+                    // the `starts_with` check.
+                    //
+                    // Also note that `--foo` flags are all auto-skipped here
+                    // since the `starts_with` check won't pass for any of them
+                    // as `f.long` never starts with `-`.
+                    if let Some(flag) = arg.strip_prefix("-") {
+                        let for_lld = LLD_FLAGS
+                            .iter()
+                            .filter(|f| f.nonstandard)
+                            .filter_map(|f| f.long)
+                            .any(|f| flag.starts_with(f));
+                        if for_lld {
+                            lld_args.push(arg.to_owned());
+                            args.next();
+                            continue;
                         }
-                        args.next();
-                        continue;
                     }
                 }
             }
@@ -555,7 +581,6 @@ impl App {
             Ok(matches) => Ok(App {
                 component: ComponentLdArgs::from_arg_matches(&matches)?,
                 lld_args,
-                shared,
             }),
             Err(_) => {
                 add_wasm_ld_options(ComponentLdArgs::command()).get_matches_from(component_ld_args);
@@ -716,7 +741,7 @@ impl App {
         self.component.skip_wit_component
             // Skip componentization with `--shared` since that's creating a
             // shared library that's not a component yet.
-            || self.shared
+            || self.lld_args.iter().any(|s| s == "-shared" || s == "--shared")
     }
 
     fn lld(&self) -> Lld {

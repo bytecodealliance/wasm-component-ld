@@ -165,6 +165,23 @@ fn main() {
         "#,
     );
     assert_component(&output);
+
+    let output = compile(
+        &[
+            "-Clink-arg=--max-memory=65536",
+            "-Clink-arg=-zstack-size=32",
+            "-Clink-arg=--global-base=2048",
+            "-Clink-arg=--append-lld-flag=--no-merge-data-segments",
+            "-Clink-arg=-allow-multiple-definition",
+            "-Clink-arg=-soname",
+            "-Clink-arg=foo",
+        ],
+        r#"
+fn main() {
+}
+        "#,
+    );
+    assert_component(&output);
 }
 
 #[test]
