@@ -6,7 +6,7 @@ license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
 description = "Linker for `wasm32-wasip2`"
 repository = "https://github.com/bytecodealliance/wasm-component-ld"
 readme = "README.md"
-rust-version = "1.76.0"
+rust-version = "1.81.0"
 
 [package.metadata.binstall]
 pkg-url = "{repo}/releases/download/v{version}/{name}-v{version}-{target-arch}-{target-family}{archive-suffix}"
@@ -29,10 +29,10 @@ clap = { version = "4.5.4", features = ['derive'] }
 clap_lex = "0.7.5"
 lexopt = "0.3.0"
 tempfile = "3.10.0"
-wasmparser = "0.243.0"
-wat = "1.243.0"
-wit-component = "0.243.0"
-wit-parser = "0.243.0"
+wasmparser = "0.244.0"
+wat = "1.244.0"
+wit-component = "0.244.0"
+wit-parser = "0.244.0"
 wasi-preview1-component-adapter-provider = "40.0.0"
 
 [target.'cfg(unix)'.dependencies]
