@@ -149,6 +149,7 @@ const LLD_FLAGS: &[LldFlag] = &[
     flag! { --call_shared }.nonstandard(),
     flag! { --check-features },
     flag! { --color-diagnostics[=VALUE] }.nonstandard(),
+    flag! { --component-model-thread-context },
     flag! { --compress-relocations }.nonstandard(),
     flag! { --demangle }.nonstandard(),
     flag! { --dn }.nonstandard(),
