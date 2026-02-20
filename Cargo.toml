@@ -29,10 +29,10 @@ clap = { version = "4.5.4", features = ['derive'] }
 clap_lex = "0.7.5"
 lexopt = "0.3.0"
 tempfile = "3.10.0"
-wasmparser = "0.244.0"
-wat = "1.244.0"
-wit-component = "0.244.0"
-wit-parser = "0.244.0"
+wasmparser = "0.245.1"
+wat = "1.245.1"
+wit-component = "0.245.1"
+wit-parser = "0.245.1"
 wasi-preview1-component-adapter-provider = "40.0.0"
 
 [target.'cfg(unix)'.dependencies]
