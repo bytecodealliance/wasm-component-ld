@@ -1,12 +1,12 @@
 [package]
 name = "wasm-component-ld"
 version = "0.5.22"
-edition = "2021"
+edition = "2024"
 license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
 description = "Linker for `wasm32-wasip2`"
 repository = "https://github.com/bytecodealliance/wasm-component-ld"
 readme = "README.md"
-rust-version = "1.82.0"
+rust-version = "1.85.0"
 
 [package.metadata.binstall]
 pkg-url = "{repo}/releases/download/v{version}/{name}-v{version}-{target-arch}-{target-family}{archive-suffix}"
@@ -24,15 +24,15 @@ pkg-fmt = "zip"
 pkg-fmt = "zip"
 
 [dependencies]
-anyhow = "1.0.80"
-clap = { version = "4.5.4", features = ['derive'] }
-clap_lex = "0.7.5"
-lexopt = "0.3.0"
-tempfile = "3.10.0"
-wasmparser = "0.246.2"
-wat = "1.246.2"
-wit-component = "0.246.2"
-wit-parser = "0.246.2"
+anyhow = "1.0.102"
+clap = { version = "4.6.1", features = ['derive'] }
+clap_lex = "1.1.0"
+lexopt = "0.3.2"
+tempfile = "3.27.0"
+wasmparser = "0.247.0"
+wat = "1.247.0"
+wit-component = "0.247.0"
+wit-parser = "0.247.0"
 wasi-preview1-component-adapter-provider = "43.0.0"
 
 [target.'cfg(unix)'.dependencies]

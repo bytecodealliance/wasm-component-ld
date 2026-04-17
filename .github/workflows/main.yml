@@ -100,7 +100,7 @@ jobs:
       with:
         submodules: true
     - name: Install Rust (rustup)
-      run: rustup update 1.82.0 --no-self-update && rustup default 1.82.0
+      run: rustup update 1.85.0 --no-self-update && rustup default 1.85.0
     - run: cargo build
 
   rustfmt:
