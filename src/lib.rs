@@ -279,7 +279,7 @@ struct ComponentLdArgs {
 
     /// Whether or not the output component is validated.
     ///
-    /// This defaults to `true`.
+    /// This defaults to `false`.
     #[clap(long)]
     validate_component: Option<bool>,
 
