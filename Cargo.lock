@@ -448,7 +448,7 @@ dependencies = [
 
 [[package]]
 name = "wasm-component-ld"
-version = "0.5.22"
+version = "0.5.23"
 dependencies = [
  "anyhow",
  "clap",
