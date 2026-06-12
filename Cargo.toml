@@ -1,6 +1,6 @@
 [package]
 name = "wasm-component-ld"
-version = "0.5.23"
+version = "0.5.24"
 edition = "2024"
 license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
 description = "Linker for `wasm32-wasip2`"
