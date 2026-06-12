@@ -150,7 +150,7 @@ const LLD_FLAGS: &[LldFlag] = &[
     flag! { --check-features },
     flag! { --color-diagnostics[=VALUE] }.nonstandard(),
     flag! { --compress-relocations }.nonstandard(),
-    flag! { --cooperative-multithreading },
+    flag! { --cooperative-threading },
     flag! { --demangle }.nonstandard(),
     flag! { --dn }.nonstandard(),
     flag! { --dy }.nonstandard(),
