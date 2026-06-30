@@ -80,12 +80,16 @@ impl Project {
 
 fn assert_component(bytes: &[u8]) {
     assert!(wasmparser::Parser::is_component(&bytes));
-    wasmparser::Validator::new().validate_all(&bytes).unwrap();
+    wasmparser::Validator::new_with_features(wasmparser::WasmFeatures::all())
+        .validate_all(&bytes)
+        .unwrap();
 }
 
 fn assert_module(bytes: &[u8]) {
     assert!(wasmparser::Parser::is_core_wasm(&bytes));
-    wasmparser::Validator::new().validate_all(&bytes).unwrap();
+    wasmparser::Validator::new_with_features(wasmparser::WasmFeatures::all())
+        .validate_all(&bytes)
+        .unwrap();
 }
 
 #[test]
@@ -248,6 +252,35 @@ pub unsafe extern "C" fn export(ptr: *mut u8, len: i32) -> *mut u8 {
     result
 }
 "#,
+    );
+    assert_component(&output);
+}
+
+#[test]
+fn component_type_wit_file_with_map() {
+    let project = Project::new();
+    project.file(
+        "maps.wit",
+        r#"
+package test:maps;
+
+interface maps {
+  type names-by-id = map<u32, string>;
+}
+
+world root {
+  export maps;
+}
+"#,
+    );
+    let output = project.compile(
+        &[
+            "-Clink-arg=--component-type",
+            "-Clink-arg=maps.wit",
+            "--crate-type",
+            "cdylib",
+        ],
+        "",
     );
     assert_component(&output);
 }
