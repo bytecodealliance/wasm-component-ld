@@ -318,3 +318,18 @@ fn main() {
     println!("error: {err}");
     assert!(err.contains("unknown or invalid component model import syntax"));
 }
+
+#[test]
+fn multiple_flags_accepted() {
+    let output = compile(
+        &[
+            "-Clink-arg=--skip-wit-component",
+            "-Clink-arg=--skip-wit-component",
+        ],
+        r#"
+fn main() {
+}
+        "#,
+    );
+    assert_module(&output);
+}

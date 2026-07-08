@@ -254,7 +254,7 @@ struct App {
 /// wasm module will be turned into a component using component tooling and
 /// embedded information in the core wasm module.
 #[derive(clap::Parser, Default)]
-#[command(version)]
+#[command(version, args_override_self = true)]
 struct ComponentLdArgs {
     /// Which default WASI adapter, if any, to use when creating the output
     /// component.
@@ -282,15 +282,15 @@ struct ComponentLdArgs {
     /// Whether or not the output component is validated.
     ///
     /// This defaults to `false`.
-    #[clap(long)]
-    validate_component: Option<bool>,
+    #[clap(long, require_equals = true, value_name = "true|false")]
+    validate_component: Option<Option<bool>>,
 
     /// Whether or not imports are deduplicated based on semver in the final
     /// component.
     ///
     /// This defaults to `true`.
-    #[clap(long)]
-    merge_imports_based_on_semver: Option<bool>,
+    #[clap(long, require_equals = true, value_name = "true|false")]
+    merge_imports_based_on_semver: Option<Option<bool>>,
 
     /// Adapters to use when creating the final component.
     #[clap(long = "adapt", value_name = "[NAME=]MODULE", value_parser = parse_adapter)]
@@ -699,10 +699,10 @@ impl App {
             .reject_legacy_names(self.component.reject_legacy_names)
             .realloc_via_memory_grow(self.component.realloc_via_memory_grow);
         if let Some(validate) = self.component.validate_component {
-            encoder = encoder.validate(validate);
+            encoder = encoder.validate(validate.unwrap_or(true));
         }
         if let Some(merge) = self.component.merge_imports_based_on_semver {
-            encoder = encoder.merge_imports_based_on_semver(merge);
+            encoder = encoder.merge_imports_based_on_semver(merge.unwrap_or(true));
         }
         encoder = encoder
             .module(&core_module)
