@@ -27,10 +27,7 @@ impl Project {
     }
 
     fn try_compile(&self, args: &[&str], src: &str, inherit_stderr: bool) -> Result<Vec<u8>> {
-        let mut myself = env::current_exe().unwrap();
-        myself.pop(); // exe name
-        myself.pop(); // 'deps'
-        myself.push("wasm-component-ld");
+        let myself = env!("CARGO_BIN_EXE_wasm-component-ld");
         let mut rustc = Command::new("rustc");
         rustc
             .arg("--target")
@@ -39,7 +36,7 @@ impl Project {
             .arg("-o")
             .arg("-")
             .arg("-C")
-            .arg(&format!("linker={}", myself.to_str().unwrap()))
+            .arg(&format!("linker={myself}"))
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
