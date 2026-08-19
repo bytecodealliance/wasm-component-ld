@@ -340,6 +340,10 @@ struct ComponentLdArgs {
     /// not already recognized by this wrapper executable.
     #[clap(long)]
     append_lld_flag: Vec<OsString>,
+
+    /// Whether or not to use `return_call_ref` in the generated component.
+    #[clap(long)]
+    return_call_ref: bool,
 }
 
 fn parse_adapter(s: &str) -> Result<(String, Vec<u8>)> {
@@ -698,7 +702,8 @@ impl App {
         let mut encoder = wit_component::ComponentEncoder::default();
         encoder
             .reject_legacy_names(self.component.reject_legacy_names)
-            .realloc_via_memory_grow(self.component.realloc_via_memory_grow);
+            .realloc_via_memory_grow(self.component.realloc_via_memory_grow)
+            .shim_return_call_ref(self.component.return_call_ref);
         if let Some(validate) = self.component.validate_component {
             encoder.validate(validate.unwrap_or(true));
         }
