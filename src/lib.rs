@@ -695,16 +695,17 @@ impl App {
             )?;
         }
 
-        let mut encoder = wit_component::ComponentEncoder::default()
+        let mut encoder = wit_component::ComponentEncoder::default();
+        encoder
             .reject_legacy_names(self.component.reject_legacy_names)
             .realloc_via_memory_grow(self.component.realloc_via_memory_grow);
         if let Some(validate) = self.component.validate_component {
-            encoder = encoder.validate(validate.unwrap_or(true));
+            encoder.validate(validate.unwrap_or(true));
         }
         if let Some(merge) = self.component.merge_imports_based_on_semver {
-            encoder = encoder.merge_imports_based_on_semver(merge.unwrap_or(true));
+            encoder.merge_imports_based_on_semver(merge.unwrap_or(true));
         }
-        encoder = encoder
+        encoder
             .module(&core_module)
             .context("failed to parse core wasm for componentization")?;
         let adapter = self.component.wasi_adapter.unwrap_or(if exports_start {
@@ -720,13 +721,13 @@ impl App {
         };
 
         if let Some(adapter) = adapter {
-            encoder = encoder
+            encoder
                 .adapter("wasi_snapshot_preview1", adapter)
                 .context("failed to inject adapter")?;
         }
 
         for (name, adapter) in self.component.adapters.iter() {
-            encoder = encoder
+            encoder
                 .adapter(name, adapter)
                 .with_context(|| format!("failed to inject adapter {name:?}"))?;
         }
