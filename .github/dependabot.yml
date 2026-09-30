@@ -12,3 +12,11 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-patch"]
+    groups:
+      wasm-tools:
+        applies-to: version-updates
+        patterns:
+          - "wasm*"
+          - "wit*"
+          - "wat*"
+          - "wasi*"
