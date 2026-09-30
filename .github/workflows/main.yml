@@ -55,7 +55,7 @@ jobs:
 
     env: ${{ matrix.env }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - run: rustup update stable --no-self-update && rustup default stable
@@ -84,7 +84,7 @@ jobs:
           - os: windows-latest
             rust: stable
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - name: Install Rust (rustup)
@@ -96,7 +96,7 @@ jobs:
     name: Build MSRV
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: true
     - name: Install Rust (rustup)
@@ -107,7 +107,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Install Rust
       run: rustup update stable && rustup default stable && rustup component add rustfmt
     # Note that this doesn't use `cargo fmt` because that doesn't format
