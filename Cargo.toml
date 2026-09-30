@@ -31,8 +31,8 @@ lexopt = "0.3.2"
 tempfile = "3.23.0"
 wasmparser = "0.258.0"
 wat = "1.257.0"
-wit-component = "0.257.0"
-wit-parser = "0.257.0"
+wit-component = "0.258.0"
+wit-parser = "0.258.0"
 wasi-preview1-component-adapter-provider = "49.0.1"
 
 [target.'cfg(unix)'.dependencies]
