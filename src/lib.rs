@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use clap::{ArgAction, CommandFactory, FromArgMatches};
 use clap_lex::OsStrExt;
 use lexopt::Arg;
