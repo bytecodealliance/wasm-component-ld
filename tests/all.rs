@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -77,7 +77,9 @@ impl Project {
 
 fn assert_component(bytes: &[u8]) {
     assert!(wasmparser::Parser::is_component(&bytes));
-    wasmparser::Validator::new().validate_all(&bytes).unwrap();
+    wasmparser::Validator::new_with_features(wasmparser::WasmFeatures::all())
+        .validate_all(&bytes)
+        .unwrap();
 }
 
 fn assert_module(bytes: &[u8]) {
@@ -208,6 +210,7 @@ package foo:bar;
 
 interface foo {
   bar: func(s: string) -> string;
+  baz: get() -> s32;
 }
 
 world root {
@@ -235,14 +238,21 @@ pub extern "C" fn cabi_realloc(ptr: *mut u8, old_size: i32, align: i32, new_size
 #[link(wasm_import_module = "foo:bar/foo")]
 extern "C" {
     #[link_name = "bar"]
-    fn import(ptr: *mut u8, len: i32, return_ptr: *mut *mut u8);
+    fn import1(ptr: *mut u8, len: i32, return_ptr: *mut *mut u8);
+    #[link_name = "[get]baz"]
+    fn import2() -> i32;
 }
 
 #[export_name = "foo:bar/foo#bar"]
-pub unsafe extern "C" fn export(ptr: *mut u8, len: i32) -> *mut u8 {
+pub unsafe extern "C" fn export1(ptr: *mut u8, len: i32) -> *mut u8 {
     let mut result = std::ptr::null_mut();
-    import(ptr, len, &mut result);
+    import1(ptr, len, &mut result);
     result
+}
+
+#[export_name = "foo:bar/foo#[get]baz"]
+pub unsafe extern "C" fn export2() -> i32 {
+    import2()
 }
 "#,
     );

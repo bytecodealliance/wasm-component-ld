@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{ArgAction, CommandFactory, FromArgMatches};
 use clap_lex::OsStrExt;
 use lexopt::Arg;
@@ -696,6 +696,7 @@ impl App {
                 &resolve,
                 world,
                 self.component.string_encoding,
+                false,
             )?;
         }
 
