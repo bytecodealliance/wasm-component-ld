@@ -696,6 +696,7 @@ impl App {
                 &resolve,
                 world,
                 self.component.string_encoding,
+                false,
             )?;
         }
 
