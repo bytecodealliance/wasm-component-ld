@@ -702,6 +702,7 @@ impl App {
 
         let mut encoder = wit_component::ComponentEncoder::default();
         encoder
+            .debug_names(!self.strip_all())
             .reject_legacy_names(self.component.reject_legacy_names)
             .realloc_via_memory_grow(self.component.realloc_via_memory_grow)
             .shim_return_call_ref(self.component.return_call_ref);
@@ -746,6 +747,13 @@ impl App {
         ))?;
 
         Ok(())
+    }
+
+    /// Returns whether `-s` or `--strip-all` was passed to `wasm-ld`.
+    fn strip_all(&self) -> bool {
+        self.lld_args
+            .iter()
+            .any(|s| s == "-s" || s == "--strip-all" || s == "-strip-all")
     }
 
     fn skip_wit_component(&self) -> bool {
